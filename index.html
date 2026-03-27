@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Recovery Score — Adaptive Recovery Model</title>
+<meta name="description" content="A data-driven recovery scoring system using HRV, Resting Heart Rate, and Sleep data against a 14-day rolling baseline.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   RECOVERY SCORE — CSS
+   Aesthetic: Clinical-luxe. Think Whoop meets Bloomberg Terminal.
+   Dark, data-dense, precise, with electric accent colors.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --go: #00FF88;
+  --go-dim: rgba(0,255,136,0.12);
+  --caution: #FFB800;
+  --caution-dim: rgba(255,184,0,0.12);
+  --rest: #FF3B3B;
+  --rest-dim: rgba(255,59,59,0.12);
+  --bg: #05050A;
+  --bg-elevated: #0B0B14;
+  --card: rgba(255,255,255,0.025);
+  --card-hover: rgba(255,255,255,0.045);
+  --border: rgba(255,255,255,0.06);
+  --border-hover: rgba(255,255,255,0.12);
+  --text-primary: #F0F0F5;
+  --text-secondary: rgba(255,255,255,0.5);
+  --text-muted: rgba(255,255,255,0.2);
+  --font-display: 'Outfit', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── Utility ── */
+.container { max-width: 480px; margin: 0 auto; padding: 0 20px; }
+.mono { font-family: var(--font-mono); }
+.hidden { display: none !important; }
+
+/* ── Navigation ── */
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(5,5,10,0.85);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border-top: 1px solid var(--border);
+  padding: 10px 0 env(safe-area-inset-bottom, 8px);
+}
+.nav-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 16px;
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: color 0.3s;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-btn .nav-icon { font-size: 20px; transition: transform 0.2s; }
+.nav-btn.active { color: var(--go); }
+.nav-btn:active .nav-icon { transform: scale(0.9); }
+
+/* ── Sections ── */
+.section { min-height: 100vh; min-height: 100dvh; padding-bottom: 80px; }
+
+/* ═══════════════════════════════════
+   LANDING SECTION
+   ═══════════════════════════════════ */
+#landing {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+#landing::before {
+  content: '';
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0,255,136,0.06) 0%, transparent 70%);
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.landing-content {
+  position: relative;
+  z-index: 1;
+  padding-top: 80px;
+}
+
+.landing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--go-dim);
+  border: 1px solid rgba(0,255,136,0.15);
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--go);
+  letter-spacing: 1.5px;
+  margin-bottom: 24px;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.2s forwards;
+}
+
+.landing-title {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin-bottom: 20px;
+  opacity: 0;
+  animation: fadeUp 0.7s 0.35s forwards;
+}
+.landing-title .accent { color: var(--go); }
+
+.landing-desc {
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 380px;
+  margin-bottom: 32px;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.5s forwards;
+}
+
+.landing-formula-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 28px;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.65s forwards;
+}
+.landing-formula-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+.landing-formula-text {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 2;
+}
+.landing-formula-text .w { color: var(--text-muted); font-size: 11px; }
+
+.zone-chips {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.zone-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.zone-chip.go { background: var(--go-dim); color: var(--go); border: 1px solid rgba(0,255,136,0.12); }
+.zone-chip.caution { background: var(--caution-dim); color: var(--caution); border: 1px solid rgba(255,184,0,0.12); }
+.zone-chip.rest { background: var(--rest-dim); color: var(--rest); border: 1px solid rgba(255,59,59,0.12); }
+
+.landing-features {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 32px;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.8s forwards;
+}
+.feature-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.feature-icon { font-size: 18px; flex-shrink: 0; }
+.feature-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 400;
+  line-height: 1.5;
+}
+.feature-text strong { color: var(--text-primary); font-weight: 600; }
+
+.landing-cta {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: var(--go);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.95s forwards;
+  -webkit-tap-highlight-color: transparent;
+}
+.landing-cta:active { transform: scale(0.97); }
+
+.landing-stack {
+  margin-top: 20px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  opacity: 0;
+  animation: fadeUp 0.5s 1.1s forwards;
+}
+
+/* ═══════════════════════════════════
+   DASHBOARD SECTION
+   ═══════════════════════════════════ */
+#dashboard { padding-top: 32px; }
+
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+.dash-brand h1 {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.dash-brand .sub {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  margin-top: 3px;
+}
+.dash-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* Score Ring */
+.score-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 16px;
+  margin-bottom: 24px;
+  border-radius: var(--radius-xl);
+  position: relative;
+  transition: background 0.8s;
+}
+.ring-wrap { position: relative; width: 190px; height: 190px; }
+.ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 7; }
+.ring-arc {
+  fill: none; stroke-width: 7; stroke-linecap: round;
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1), stroke 0.6s;
+}
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.ring-score {
+  font-family: var(--font-mono);
+  font-size: 54px; font-weight: 700; letter-spacing: -3px; line-height: 1;
+  transition: color 0.6s;
+  opacity: 0; transform: translateY(8px);
+  animation: fadeUp 0.8s 0.2s forwards;
+}
+.ring-zone {
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 600; letter-spacing: 4px; margin-top: 6px;
+  transition: color 0.6s;
+  opacity: 0; animation: fadeUp 0.6s 0.35s forwards;
+}
+.ring-rec {
+  font-size: 13px; color: var(--text-secondary);
+  margin-top: 14px; text-align: center;
+  opacity: 0; animation: fadeUp 0.5s 0.5s forwards;
+}
+
+/* Metric Cards */
+.metrics-grid { display: grid; gap: 12px; margin-bottom: 20px; }
+.m-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  transition: border-color 0.3s, background 0.3s;
+  opacity: 0; transform: translateY(10px);
+}
+.m-card:nth-child(1) { animation: fadeUp 0.5s 0.3s forwards; }
+.m-card:nth-child(2) { animation: fadeUp 0.5s 0.42s forwards; }
+.m-card:nth-child(3) { animation: fadeUp 0.5s 0.54s forwards; }
+
+.m-card-head {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+}
+.m-label { display: flex; align-items: center; gap: 6px; }
+.m-label .icon { font-size: 13px; }
+.m-label .name {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase;
+}
+.m-badge {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);
+}
+.m-values {
+  display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px;
+}
+.m-val { font-family: var(--font-mono); font-size: 26px; font-weight: 700; letter-spacing: -1px; }
+.m-unit { font-size: 12px; color: var(--text-secondary); margin-left: 4px; }
+.m-base { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+.m-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.04); overflow: hidden; }
+.m-bar-fill {
+  height: 100%; border-radius: 2px;
+  transition: width 1.2s cubic-bezier(0.4,0,0.2,1); width: 0%;
+}
+
+/* History Chart */
+.history-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 16px 18px; margin-bottom: 20px;
+}
+.history-label {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-muted);
+  letter-spacing: 1.5px; margin-bottom: 14px;
+}
+.history-bars {
+  display: flex; gap: 6px; align-items: flex-end; height: 80px;
+}
+.h-bar-col {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.h-bar-outer {
+  width: 100%; height: 60px; border-radius: 4px;
+  background: rgba(255,255,255,0.03); position: relative; overflow: hidden;
+}
+.h-bar-inner {
+  position: absolute; bottom: 0; width: 100%; border-radius: 4px;
+  transition: height 1s cubic-bezier(0.4,0,0.2,1);
+}
+.h-bar-score {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  color: var(--text-secondary);
+}
+.h-bar-day {
+  font-family: var(--font-mono); font-size: 8px;
+  color: var(--text-muted); letter-spacing: 0.5px;
+}
+
+/* ═══════════════════════════════════
+   INPUT SECTION
+   ═══════════════════════════════════ */
+#input-section { padding-top: 32px; }
+
+.input-header {
+  margin-bottom: 28px;
+}
+.input-header h2 {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.input-header p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.input-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.input-card-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  margin-bottom: 16px;
+}
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.input-group { display: flex; flex-direction: column; gap: 5px; }
+.input-group label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+.input-group input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.3s;
+  -webkit-appearance: none;
+  width: 100%;
+}
+.input-group input:focus { border-color: var(--go); }
+.input-group input::placeholder { color: var(--text-muted); }
+
+.submit-btn {
+  width: 100%;
+  padding: 15px;
+  background: var(--go);
+  color: #000;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+.submit-btn:active { transform: scale(0.97); opacity: 0.9; }
+
+/* History Log */
+.log-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-top: 20px;
+}
+.log-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+.log-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.log-row:last-child { border-bottom: none; }
+.log-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.log-score {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+.log-zone {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 100px;
+}
+.log-empty {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px 0;
+}
+.clear-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.3s, color 0.3s;
+}
+.clear-btn:hover { border-color: var(--rest); color: var(--rest); }
+
+/* ── About Section ── */
+#about { padding-top: 32px; }
+.about-header h2 {
+  font-family: var(--font-mono); font-size: 17px; font-weight: 700; margin-bottom: 6px;
+}
+.about-header p {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px;
+}
+.about-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px; margin-bottom: 12px;
+}
+.about-card h3 {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  color: var(--go); margin-bottom: 10px; letter-spacing: 0.5px;
+}
+.about-card p {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.7;
+}
+.about-card code {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-primary); background: rgba(255,255,255,0.05);
+  padding: 2px 6px; border-radius: 4px;
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ LANDING ═══════ -->
+<section id="landing" class="section">
+  <div class="container landing-content">
+    <div class="landing-badge">◉ ADAPTIVE RECOVERY MODEL</div>
+    
+    <h1 class="landing-title">
+      Know when to<br><span class="accent">push</span> and when<br>to <span class="accent">recover</span>.
+    </h1>
+    
+    <p class="landing-desc">
+      A data-driven recovery scoring system that compares your daily HRV, resting heart rate, and sleep against a rolling 14-day baseline.
+    </p>
+    
+    <div class="landing-formula-card">
+      <div class="landing-formula-label">THE MODEL</div>
+      <div class="landing-formula-text">
+        Score = HRV vs baseline <span class="w">× 40%</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ RHR vs baseline <span class="w">× 30%</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ Sleep quality <span class="w">× 30%</span>
+      </div>
+      <div class="zone-chips">
+        <span class="zone-chip go">60+ GO</span>
+        <span class="zone-chip caution">40-59 CAUTION</span>
+        <span class="zone-chip rest">&lt;40 REST</span>
+      </div>
+    </div>
+    
+    <div class="landing-features">
+      <div class="feature-row">
+        <span class="feature-icon">📊</span>
+        <span class="feature-text"><strong>14-day rolling baseline</strong> — adapts to your personal physiology, not population averages</span>
+      </div>
+      <div class="feature-row">
+        <span class="feature-icon">⌚</span>
+        <span class="feature-text"><strong>Apple Watch integration</strong> — feed data via Shortcuts or enter manually</span>
+      </div>
+      <div class="feature-row">
+        <span class="feature-icon">📈</span>
+        <span class="feature-text"><strong>History tracking</strong> — log your scores daily and spot recovery patterns</span>
+      </div>
+    </div>
+    
+    <button class="landing-cta" onclick="navigate('dashboard')">OPEN DASHBOARD →</button>
+    <div class="landing-stack">HTML / CSS / JAVASCRIPT — NO FRAMEWORKS</div>
+  </div>
+</section>
+
+<!-- ═══════ DASHBOARD ═══════ -->
+<section id="dashboard" class="section hidden">
+  <div class="container">
+    <div class="dash-header">
+      <div class="dash-brand">
+        <h1>RECOVERY<span id="dash-dot" style="color:var(--go)">.</span></h1>
+        <div class="sub">14-DAY ADAPTIVE MODEL</div>
+      </div>
+      <span class="dash-date" id="dash-date"></span>
+    </div>
+    <div id="dash-content">
+      <div style="text-align:center;padding:80px 0;">
+        <p style="font-size:40px;margin-bottom:16px;">⌚</p>
+        <p class="mono" style="font-size:13px;color:var(--text-secondary);">No data yet</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Log your first entry in the Input tab</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ INPUT ═══════ -->
+<section id="input-section" class="section hidden">
+  <div class="container">
+    <div class="input-header">
+      <h2>Log Entry</h2>
+      <p>Enter today's values and your 14-day averages. If using Apple Shortcuts, the URL params auto-fill this.</p>
+    </div>
+    
+    <div class="input-card">
+      <div class="input-card-label">TODAY'S READINGS</div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>HRV (ms)</label>
+          <input type="number" id="in-hrv" placeholder="45" step="0.1">
+        </div>
+        <div class="input-group">
+          <label>RESTING HR (bpm)</label>
+          <input type="number" id="in-rhr" placeholder="58" step="0.1">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>SLEEP (hours)</label>
+          <input type="number" id="in-sleep" placeholder="7.2" step="0.1">
+        </div>
+        <div class="input-group">
+          <label>&nbsp;</label>
+          <div></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="input-card">
+      <div class="input-card-label">14-DAY BASELINES</div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>AVG HRV (ms)</label>
+          <input type="number" id="in-bhrv" placeholder="40" step="0.1">
+        </div>
+        <div class="input-group">
+          <label>AVG RHR (bpm)</label>
+          <input type="number" id="in-brhr" placeholder="60" step="0.1">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>AVG SLEEP (hours)</label>
+          <input type="number" id="in-bsleep" placeholder="7.0" step="0.1">
+        </div>
+        <div class="input-group">
+          <label>&nbsp;</label>
+          <div></div>
+        </div>
+      </div>
+    </div>
+    
+    <button class="submit-btn" onclick="submitEntry()">COMPUTE & LOG SCORE</button>
+    
+    <div class="log-card" id="log-card">
+      <div class="log-label">HISTORY LOG</div>
+      <div id="log-list">
+        <div class="log-empty">No entries logged yet</div>
+      </div>
+      <button class="clear-btn hidden" id="clear-btn" onclick="clearHistory()">CLEAR ALL DATA</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ ABOUT ═══════ -->
+<section id="about" class="section hidden">
+  <div class="container">
+    <div class="about-header">
+      <h2>How It Works</h2>
+      <p>The science and math behind your recovery score.</p>
+    </div>
+    
+    <div class="about-card">
+      <h3>Heart Rate Variability (40%)</h3>
+      <p>HRV measures the variation in time between heartbeats. Higher HRV indicates better parasympathetic (rest-and-digest) nervous system activity. Your score compares today's HRV against your 14-day average: <code>ratio = today / baseline</code>. A ratio above 1.0 means you're above your personal norm — a strong recovery signal.</p>
+    </div>
+    
+    <div class="about-card">
+      <h3>Resting Heart Rate (30%)</h3>
+      <p>RHR is your heart rate at complete rest. Lower RHR typically indicates better cardiovascular fitness and recovery. The scoring uses an inverse ratio: <code>ratio = baseline / today</code>. When your RHR drops below your baseline, your score increases.</p>
+    </div>
+    
+    <div class="about-card">
+      <h3>Sleep Quality (30%)</h3>
+      <p>Sleep is scored on total hours with an optimal range of 7-9 hours. Hitting the optimal range provides a base score of 60, with bonuses for sleeping at or above your 14-day average (+20) and getting 7.5+ hours (+10). Below 6 hours triggers a low base score of 20.</p>
+    </div>
+    
+    <div class="about-card">
+      <h3>Why 14-Day Rolling Baseline?</h3>
+      <p>Population averages are misleading — a "good" HRV for one person is different from another. By comparing against your own 14-day rolling average, the model adapts to YOUR physiology. It detects relative changes that matter, not absolute numbers that don't.</p>
+    </div>
+    
+    <div class="about-card">
+      <h3>Built With</h3>
+      <p>Pure HTML, CSS, and JavaScript — no frameworks, no dependencies, no build tools. Data is stored in your browser's localStorage. Designed for Apple Shortcuts integration via URL parameters. Hosted on GitHub Pages.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ NAV ═══════ -->
+<nav>
+  <div class="nav-inner">
+    <button class="nav-btn active" onclick="navigate('landing')" data-section="landing">
+      <span class="nav-icon">◉</span>HOME
+    </button>
+    <button class="nav-btn" onclick="navigate('dashboard')" data-section="dashboard">
+      <span class="nav-icon">◎</span>SCORE
+    </button>
+    <button class="nav-btn" onclick="navigate('input-section')" data-section="input-section">
+      <span class="nav-icon">⊕</span>INPUT
+    </button>
+    <button class="nav-btn" onclick="navigate('about')" data-section="about">
+      <span class="nav-icon">≡</span>ABOUT
+    </button>
+  </div>
+</nav>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   RECOVERY SCORE ENGINE
+   
+   Model: Score = HRV÷baseline (40%) + RHR÷baseline (30%) + Sleep (30%)
+   Each component scored 0-100 against 14-day rolling average.
+   Zones: 60+ = GO · 40-59 = CAUTION · <40 = REST
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── Scoring Functions ──
+
+function clamp(val) {
+  return Math.min(100, Math.max(0, Math.round(val)));
+}
+
+/**
+ * Score HRV (Heart Rate Variability)
+ * Higher is better → direct ratio to baseline
+ * @param {number} today - Today's HRV in ms
+ * @param {number} baseline - 14-day average HRV
+ * @returns {number|null} Score 0-100
+ */
+function scoreHRV(today, baseline) {
+  if (!today || !baseline || baseline === 0) return null;
+  const ratio = today / baseline;
+  const raw = ratio * 50 + (ratio >= 1 ? 25 : -10);
+  return clamp(raw);
+}
+
+/**
+ * Score Resting Heart Rate
+ * Lower is better → inverse ratio to baseline
+ * @param {number} today - Today's RHR in bpm
+ * @param {number} baseline - 14-day average RHR
+ * @returns {number|null} Score 0-100
+ */
+function scoreRHR(today, baseline) {
+  if (!today || !baseline || today === 0) return null;
+  const ratio = baseline / today;
+  const raw = ratio * 50 + (today <= baseline ? 25 : -10);
+  return clamp(raw);
+}
+
+/**
+ * Score Sleep Quality
+ * 7-9 hours optimal, bonuses for baseline consistency
+ * @param {number} today - Today's sleep in hours
+ * @param {number} baseline - 14-day average sleep
+ * @returns {number|null} Score 0-100
+ */
+function scoreSleep(today, baseline) {
+  if (!today) return null;
+  let base = today >= 7 && today <= 9 ? 60 : today >= 6 ? 40 : 20;
+  if (baseline && baseline > 0 && (today / baseline) >= 0.95) base += 20;
+  if (today >= 7.5) base += 10;
+  return clamp(base);
+}
+
+/**
+ * Compute composite recovery score
+ * @returns {{ composite, zone, hrvScore, rhrScore, sleepScore }}
+ */
+function computeRecovery(tHRV, tRHR, tSleep, bHRV, bRHR, bSleep) {
+  const h = scoreHRV(tHRV, bHRV);
+  const r = scoreRHR(tRHR, bRHR);
+  const s = scoreSleep(tSleep, bSleep);
+  
+  const components = [
+    { score: h, weight: 0.4 },
+    { score: r, weight: 0.3 },
+    { score: s, weight: 0.3 },
+  ].filter(c => c.score !== null);
+  
+  const totalWeight = components.reduce((a, c) => a + c.weight, 0);
+  const composite = totalWeight > 0
+    ? Math.round(components.reduce((a, c) => a + c.score * (c.weight / totalWeight), 0))
+    : null;
+  
+  const zone = composite === null ? 'N/A' : composite >= 60 ? 'GO' : composite >= 40 ? 'CAUTION' : 'REST';
+  
+  return { composite, zone, hrvScore: h, rhrScore: r, sleepScore: s };
+}
+
+// ── Color Helpers ──
+
+function zoneColor(zone) {
+  return zone === 'GO' ? 'var(--go)' : zone === 'CAUTION' ? 'var(--caution)' : zone === 'REST' ? 'var(--rest)' : 'var(--text-muted)';
+}
+function zoneColorHex(zone) {
+  return zone === 'GO' ? '#00FF88' : zone === 'CAUTION' ? '#FFB800' : zone === 'REST' ? '#FF3B3B' : '#666';
+}
+function zoneDim(zone) {
+  return zone === 'GO' ? 'var(--go-dim)' : zone === 'CAUTION' ? 'var(--caution-dim)' : zone === 'REST' ? 'var(--rest-dim)' : 'rgba(255,255,255,0.05)';
+}
+function zoneRec(zone) {
+  if (zone === 'GO') return 'Fully recovered. Push hard today.';
+  if (zone === 'CAUTION') return 'Moderate intensity. Listen to your body.';
+  if (zone === 'REST') return 'Prioritize recovery. Light movement only.';
+  return 'Missing data.';
+}
+function barColor(score) {
+  if (score === null) return '#333';
+  return score >= 60 ? 'var(--go)' : score >= 40 ? 'var(--caution)' : 'var(--rest)';
+}
+
+// ── LocalStorage ──
+
+const STORAGE_KEY = 'recovery_history';
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch { return []; }
+}
+
+function saveEntry(entry) {
+  const history = getHistory();
+  // Replace same-day entry if exists
+  const idx = history.findIndex(e => e.date === entry.date);
+  if (idx >= 0) history[idx] = entry;
+  else history.push(entry);
+  // Keep last 90 days
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-90)));
+}
+
+function clearHistory() {
+  if (confirm('Clear all history? This cannot be undone.')) {
+    localStorage.removeItem(STORAGE_KEY);
+    renderLog();
+    renderDashboard();
+  }
+}
+
+// ── Navigation ──
+
+function navigate(sectionId) {
+  document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+  document.getElementById(sectionId).classList.remove('hidden');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === sectionId);
+  });
+  window.scrollTo(0, 0);
+  
+  if (sectionId === 'dashboard') renderDashboard();
+  if (sectionId === 'input-section') renderLog();
+}
+
+// ── Dashboard Render ──
+
+function renderDashboard() {
+  const history = getHistory();
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('dash-date').textContent = today;
+  
+  if (!history.length) {
+    document.getElementById('dash-content').innerHTML = `
+      <div style="text-align:center;padding:80px 0;">
+        <p style="font-size:40px;margin-bottom:16px;">⌚</p>
+        <p class="mono" style="font-size:13px;color:var(--text-secondary);">No data yet</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Log your first entry in the Input tab</p>
+      </div>`;
+    return;
+  }
+  
+  const latest = history[history.length - 1];
+  const color = zoneColor(latest.zone);
+  const pct = (latest.composite || 0) / 100;
+  const R = 83;
+  const C = 2 * Math.PI * R;
+  const offset = C * (1 - pct);
+  
+  document.getElementById('dash-dot').style.color = zoneColorHex(latest.zone);
+  
+  // Last 7 entries for chart
+  const last7 = history.slice(-7);
+  
+  document.getElementById('dash-content').innerHTML = `
+    <div class="score-hero" style="background:radial-gradient(circle at 50% 40%, ${zoneColorHex(latest.zone)}11, transparent 70%)">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 190 190">
+          <circle class="ring-track" cx="95" cy="95" r="${R}"/>
+          <circle class="ring-arc" cx="95" cy="95" r="${R}"
+            stroke="${zoneColorHex(latest.zone)}"
+            stroke-dasharray="${C}"
+            stroke-dashoffset="${offset}"
+            style="filter:drop-shadow(0 0 10px ${zoneColorHex(latest.zone)}66)"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-score" style="color:${color}">${latest.composite ?? '—'}</div>
+          <div class="ring-zone" style="color:${color}">${latest.zone}</div>
+        </div>
+      </div>
+      <div class="ring-rec">${zoneRec(latest.zone)}</div>
+    </div>
+    
+    <div class="metrics-grid">
+      ${metricCard('💓', 'HRV', latest.todayHRV, 'ms', latest.hrvScore, latest.baselineHRV)}
+      ${metricCard('❤️', 'RESTING HR', latest.todayRHR, 'bpm', latest.rhrScore, latest.baselineRHR)}
+      ${metricCard('🌙', 'SLEEP', latest.todaySleep?.toFixed(1), 'hrs', latest.sleepScore, latest.baselineSleep?.toFixed(1))}
+    </div>
+    
+    ${last7.length > 1 ? `
+    <div class="history-card">
+      <div class="history-label">RECENT SCORES</div>
+      <div class="history-bars">
+        ${last7.map(e => {
+          const h = Math.max(5, ((e.composite || 0) / 100) * 60);
+          const c = zoneColorHex(e.zone);
+          const d = new Date(e.date + 'T00:00:00');
+          const day = d.toLocaleDateString('en', { weekday: 'short' }).toUpperCase();
+          return `<div class="h-bar-col">
+            <div class="h-bar-score">${e.composite ?? '—'}</div>
+            <div class="h-bar-outer">
+              <div class="h-bar-inner" style="height:${h}px;background:${c}" data-h="${h}"></div>
+            </div>
+            <div class="h-bar-day">${day}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+  `;
+  
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.m-bar-fill').forEach(el => { el.style.width = el.dataset.w; });
+  }, 100);
+}
+
+function metricCard(icon, label, value, unit, score, baseline) {
+  return `<div class="m-card">
+    <div class="m-card-head">
+      <div class="m-label"><span class="icon">${icon}</span><span class="name">${label}</span></div>
+      <span class="m-badge">${score !== null && score !== undefined ? score + '/100' : '—'}</span>
+    </div>
+    <div class="m-values">
+      <div><span class="m-val">${value ?? '—'}</span><span class="m-unit">${unit}</span></div>
+      <span class="m-base">14d avg: ${baseline ?? '—'}${unit}</span>
+    </div>
+    <div class="m-bar">
+      <div class="m-bar-fill" data-w="${score || 0}%" style="background:${barColor(score)}"></div>
+    </div>
+  </div>`;
+}
+
+// ── Input & Log ──
+
+function submitEntry() {
+  const tHRV = parseFloat(document.getElementById('in-hrv').value);
+  const tRHR = parseFloat(document.getElementById('in-rhr').value);
+  const tSleep = parseFloat(document.getElementById('in-sleep').value);
+  const bHRV = parseFloat(document.getElementById('in-bhrv').value);
+  const bRHR = parseFloat(document.getElementById('in-brhr').value);
+  const bSleep = parseFloat(document.getElementById('in-bsleep').value);
+  
+  if ([tHRV, tRHR, tSleep, bHRV, bRHR, bSleep].some(v => isNaN(v) || v <= 0)) {
+    alert('Please fill in all fields with valid numbers.');
+    return;
+  }
+  
+  const { composite, zone, hrvScore, rhrScore, sleepScore } = computeRecovery(tHRV, tRHR, tSleep, bHRV, bRHR, bSleep);
+  
+  const entry = {
+    date: new Date().toISOString().split('T')[0],
+    composite, zone, hrvScore, rhrScore, sleepScore,
+    todayHRV: tHRV, todayRHR: tRHR, todaySleep: tSleep,
+    baselineHRV: bHRV, baselineRHR: bRHR, baselineSleep: bSleep
+  };
+  
+  saveEntry(entry);
+  renderLog();
+  navigate('dashboard');
+}
+
+function renderLog() {
+  const history = getHistory();
+  const list = document.getElementById('log-list');
+  const clearBtn = document.getElementById('clear-btn');
+  
+  if (!history.length) {
+    list.innerHTML = '<div class="log-empty">No entries logged yet</div>';
+    clearBtn.classList.add('hidden');
+    return;
+  }
+  
+  clearBtn.classList.remove('hidden');
+  list.innerHTML = history.slice().reverse().slice(0, 14).map(e => `
+    <div class="log-row">
+      <span class="log-date">${e.date}</span>
+      <span class="log-score" style="color:${zoneColor(e.zone)}">${e.composite ?? '—'}</span>
+      <span class="log-zone" style="color:${zoneColorHex(e.zone)};background:${zoneDim(e.zone)}">${e.zone}</span>
+    </div>
+  `).join('');
+}
+
+// ── URL Params (for Shortcuts integration) ──
+
+function checkURLParams() {
+  const p = new URLSearchParams(window.location.search);
+  const vals = ['hrv','rhr','sleep','bhrv','brhr','bsleep'].map(k => parseFloat(p.get(k)));
+  
+  if (vals.every(v => !isNaN(v) && v > 0)) {
+    // Auto-fill inputs
+    document.getElementById('in-hrv').value = vals[0];
+    document.getElementById('in-rhr').value = vals[1];
+    document.getElementById('in-sleep').value = vals[2];
+    document.getElementById('in-bhrv').value = vals[3];
+    document.getElementById('in-brhr').value = vals[4];
+    document.getElementById('in-bsleep').value = vals[5];
+    
+    // Auto-compute and save
+    const { composite, zone, hrvScore, rhrScore, sleepScore } = computeRecovery(...vals);
+    saveEntry({
+      date: new Date().toISOString().split('T')[0],
+      composite, zone, hrvScore, rhrScore, sleepScore,
+      todayHRV: vals[0], todayRHR: vals[1], todaySleep: vals[2],
+      baselineHRV: vals[3], baselineRHR: vals[4], baselineSleep: vals[5]
+    });
+    
+    // Go straight to dashboard
+    navigate('dashboard');
+  }
+}
+
+// ── Init ──
+checkURLParams();
+</script>
+</body>
+</html>
