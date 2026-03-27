@@ -59,7 +59,7 @@ Population averages are misleading — a "good" HRV for one person is completely
 
 Try it with sample data:
 ```
-https://YOUR_USERNAME.github.io/recovery-score/?hrv=48&rhr=55&sleep=7.5&bhrv=42&brhr=58&bsleep=7.0
+https://TamerAdawi.github.io/recovery-score/?hrv=48&rhr=55&sleep=7.5&bhrv=42&brhr=58&bsleep=7.0
 ```
 
 ## Apple Shortcuts Integration
