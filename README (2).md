@@ -2,7 +2,7 @@
 
 **A data-driven recovery scoring system that uses HRV, Resting Heart Rate, and Sleep data against a personalized 14-day rolling baseline to determine daily training readiness.**
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-00FF88?style=for-the-badge&logo=github)](https://YOUR_USERNAME.github.io/recovery-score)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-00FF88?style=for-the-badge&logo=github)](github.com/TamerAdawi/recovery-score)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
@@ -55,7 +55,7 @@ Population averages are misleading — a "good" HRV for one person is completely
 
 ## Live Demo
 
-**[→ Open the app](https://YOUR_USERNAME.github.io/recovery-score)**
+**[→ Open the app](github.com/TamerAdawi/recovery-score)**
 
 Try it with sample data:
 ```
@@ -96,13 +96,13 @@ The app auto-computes the score, saves to history, and shows the dashboard.
 
 ```bash
 # 1. Fork or clone this repo
-git clone https://github.com/YOUR_USERNAME/recovery-score.git
+git clone github.com/TamerAdawi/recovery-score.git
 
 # 2. That's it. Enable GitHub Pages:
 #    Settings → Pages → Source: main → / (root) → Save
 
 # 3. Your app is live at:
-#    https://YOUR_USERNAME.github.io/recovery-score
+#    github.com/TamerAdawi/recovery-score
 ```
 
 ### Option 2: Local
@@ -155,4 +155,4 @@ MIT — use it, modify it, learn from it.
 
 ---
 
-**Built by [Your Name]** · [LinkedIn](https://linkedin.com/in/YOUR_PROFILE) · [GitHub](https://github.com/YOUR_USERNAME)
+**Built by Tamer Adawi** · [LinkedIn](https://www.linkedin.com/in/tamer-adawi-36a6a91a6/) · [GitHub](https://github.com/TamerAdawi)
