@@ -1,4 +1,4 @@
-# Recovery Score
+# ⚡ Recovery Score
 
 **A data-driven recovery scoring system that compares your daily HRV, Resting Heart Rate, Total Sleep, and Deep Sleep against a personalized 14-day rolling baseline to determine training readiness.**
 
@@ -7,6 +7,70 @@
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+
+---
+
+## Quick Start
+
+**Want to use it right now?** Three steps:
+
+1. **Install both Shortcuts** on your iPhone (links below)
+2. **Connect them** (one-time setup, takes 30 seconds)
+3. **Run** — your recovery score appears automatically
+
+| Download | Link |
+|----------|------|
+| **Recovery Score Shortcut** | [Install from iCloud](https://www.icloud.com/shortcuts/63c813f3e7f44505b1cd0e2076679eec) |
+| **Sleep Analysis Shortcut** (required) | [Install from iCloud](https://www.icloud.com/shortcuts/ab67a110e9c043538ff484c6ab66b6d1) |
+| **Web Dashboard** | [Open App](https://tameradawi.github.io/recovery-score) |
+
+### Setup Guide
+
+**Step 1 — Install both Shortcuts**
+
+Tap both links above on your iPhone. When prompted, tap "Add Shortcut" for each one. You should now see both shortcuts in your Shortcuts app.
+
+**Step 2 — Connect the Sleep Shortcut to Recovery Score**
+
+This is the important part. The Recovery Score shortcut needs to know which shortcut fetches your sleep data:
+
+1. Open the **Shortcuts** app
+2. Find **Recovery Score** and tap the **three dots** (⋯) to edit it
+3. Scroll down until you find the **"Run Shortcut"** action
+4. Tap on the shortcut name inside that action — it may say "Shortcut" or show a blank
+5. Select the **Sleep Analysis** shortcut (the other one you just installed)
+6. Tap **Done** to save
+
+**Step 3 — Grant Health Permissions**
+
+The first time you run the shortcut, your iPhone will ask for permission to access Health data. Tap **Allow** for all requests (Heart Rate Variability, Resting Heart Rate, and Sleep).
+
+**Step 4 — Run It**
+
+Tap the Recovery Score shortcut. It will:
+1. Pull your HRV and RHR from Apple Health
+2. Run the Sleep Analysis shortcut to get your sleep hours and deep sleep
+3. Compute your 14-day baselines
+4. Open Safari with your personalized recovery dashboard
+
+**Step 5 (Optional) — Automate It**
+
+Make it run every morning without touching your phone:
+
+1. Go to the **Automation** tab in Shortcuts
+2. Tap **+** then **Time of Day**
+3. Set to **7:00 AM** (or whenever you wake up), repeat **Daily**
+4. Choose **Run Shortcut** and select **Recovery Score**
+5. Turn OFF **Ask Before Running**
+
+Done. Every morning you wake up to your recovery score.
+
+### Requirements
+
+- iPhone with **Apple Watch** paired
+- iOS 16 or later
+- Both shortcuts installed and connected (see setup above)
+- Apple Watch worn during sleep for sleep data
 
 ---
 
@@ -49,54 +113,44 @@ Population averages are misleading — a "good" HRV for one person is completely
 ## Architecture
 
 ```
-┌──────────────┐     ┌─────────────────┐     ┌──────────────────┐
-│  Apple Watch  │────>│  Apple Health    │────>│  iOS Shortcuts   │
-│  (sensors)    │     │  (data store)   │     │  (data pipeline) │
-└──────────────┘     └─────────────────┘     └────────┬─────────┘
-                                                       │
-                                                       v
+┌──────────────┐     ┌─────────────────┐     ┌──────────────────────────┐
+│  Apple Watch  │────>│  Apple Health    │────>│  iOS Shortcuts           │
+│  (sensors)    │     │  (data store)   │     │                          │
+└──────────────┘     └─────────────────┘     │  Recovery Score Shortcut │
+                                              │    │                      │
+                                              │    v                      │
+                                              │  Sleep Analysis Shortcut │
+                                              │    │                      │
+                                              └────┼──────────────────────┘
+                                                   │
+                                                   v  (URL with 6-8 parameters)
                                               ┌──────────────────┐
                                               │  Recovery Score  │
                                               │  Web App         │
-                                              │  (scoring engine │
-                                              │   + dashboard)   │
+                                              │  (GitHub Pages)  │
                                               └──────────────────┘
 ```
 
-**Data flow:** Apple Watch sensors collect biometric data continuously. Apple Health stores it. An iOS Shortcut queries Health for today's values and 14-day baselines, then opens the web app with all parameters in the URL. The web app runs the scoring algorithm, renders the dashboard, and saves the entry to localStorage for history tracking.
+**Data flow:** Apple Watch sensors collect biometric data continuously. Apple Health stores it. The Recovery Score Shortcut queries Health for HRV and RHR (today + 14-day baselines), then calls the Sleep Analysis Shortcut which parses sleep stage data (Core, REM, Deep) and returns a formatted report. Recovery Score extracts total sleep and deep sleep minutes via regex, constructs a URL with all parameters, and opens the web app. The web app runs the scoring algorithm, renders the dashboard, and saves the entry to localStorage for history tracking.
 
 ## Features
 
 - **Composite Recovery Score** — Weighted algorithm combining HRV, RHR, and sleep quality into a single 0-100 score
 - **Visual Dashboard** — Animated score ring with zone classification, component breakdown, and score bars
 - **4 Metric Cards** — HRV, RHR, Sleep Hours, and Deep Sleep with today's value, component score, and 14-day baseline comparison
-- **History Tracking** — localStorage-based daily log with 7-day visual bar chart, stores up to 90 days
-- **Apple Shortcuts Integration** — Fully automated data pipeline via URL parameters, no manual input needed
+- **7-Day History** — Visual bar chart showing recent scores with zone coloring
+- **History Tracking** — localStorage-based daily log storing up to 90 days of entries
+- **Apple Shortcuts Integration** — Fully automated two-shortcut data pipeline via URL parameters
 - **Smart Sleep Detection** — Auto-converts sleep values whether received in seconds, minutes, or hours
 - **Baseline Fallback** — Uses URL-provided baselines when available, falls back to stored history baselines when not
 - **Manual Input** — Full input form for entering values directly with instant score computation
 - **Model Documentation** — Built-in explainer page covering the science behind each component
-- **Mobile-First Design** — Designed for iPhone viewport, dark theme, bottom navigation
+- **Mobile-First Design** — Optimized for iPhone viewport, dark theme, bottom tab navigation
 - **Zero Dependencies** — Pure HTML, CSS, and JavaScript. No frameworks, no build tools, no npm
 
-## Live Demo
+## URL Parameters
 
-**[→ Open the app](https://tameradawi.github.io/recovery-score)**
-
-Try it with sample data:
-```
-https://tameradawi.github.io/recovery-score/?hrv=48&rhr=55&sleep=602&deep=77&bhrv=42&brhr=58
-```
-
-## Apple Shortcuts Integration
-
-The app accepts data via URL parameters, enabling a fully automated morning routine:
-
-```
-Apple Watch  ->  Apple Health  ->  iOS Shortcuts  ->  Recovery Score Web App
-```
-
-### URL Parameters
+The web app accepts health data via URL query strings:
 
 | Parameter | Description | Example | Required |
 |-----------|-------------|---------|----------|
@@ -111,27 +165,10 @@ Apple Watch  ->  Apple Health  ->  iOS Shortcuts  ->  Recovery Score Web App
 
 *Baselines fall back to stored history if not provided in URL.
 
-### Shortcut Structure
-
-The iOS Shortcut performs these steps:
-
-1. **Query HRV** — Find Health Samples, Heart Rate Variability, today, Calculate Statistics (Average)
-2. **Query RHR** — Find Health Samples, Resting Heart Rate, today
-3. **Query Baselines** — Same queries with 14-day window, Calculate Statistics (Average)
-4. **Query Sleep** — Runs a secondary shortcut that parses Apple Health sleep analysis into total sleep and deep sleep minutes using category-level filtering
-5. **Extract Values** — Regex pattern matching to pull numeric values from the sleep report
-6. **Build URL** — Constructs the full URL with all parameters as query strings
-7. **Open URL** — Opens Safari, the web app auto-computes the score and saves to history
-
-### Daily Automation
-
-Set up as a daily automation in the Shortcuts app:
-
-1. Go to **Automation** tab, tap **+**, select **Time of Day**, set to 7:00 AM, Daily
-2. **Run Shortcut**, select Recovery Score
-3. Turn off **Ask Before Running**
-
-Your recovery score is computed and displayed every morning without lifting a finger.
+Example URL:
+```
+https://tameradawi.github.io/recovery-score/?hrv=48&rhr=55&sleep=602&deep=77&bhrv=42&brhr=58
+```
 
 ## Scoring Algorithm Detail
 
@@ -174,10 +211,12 @@ composite = hrvScore * 0.4 + rhrScore * 0.3 + sleepScore * 0.3
 |----------|-----------|
 | **No framework** | The entire app is ~600 lines. React/Vue would add complexity without benefit for a single-page scoring tool. |
 | **Single HTML file** | Simplifies deployment to any static host. One file to audit, one file to deploy. |
+| **Two-shortcut architecture** | Separates health data queries (simple) from sleep stage parsing (complex). Modular, easier to debug. |
+| **Regex for sleep extraction** | The sleep shortcut returns formatted text. Regex pattern matching (`Sleep: (\d+) min`) is the most reliable extraction method after testing alternatives (Split Text, Dictionary). |
 | **localStorage** | No backend needed. All data stays on the user's device. Privacy by default, zero server costs. |
 | **URL parameter API** | Enables integration with Apple Shortcuts without any server, authentication, or API layer. |
 | **CSS-only animations** | Hardware-accelerated transitions via transform and opacity. No animation library needed. |
-| **Auto-detection for sleep** | Sleep data arrives in different units depending on the source. Auto-converting eliminates user errors. |
+| **Auto-detection for sleep** | Sleep data arrives in different units depending on the source. Auto-converting (>1440 = seconds, >24 = minutes, else hours) eliminates user errors. |
 | **Baseline fallback** | URL baselines take priority, stored history baselines ensure the app works with partial data. |
 
 ## Project Structure
@@ -189,7 +228,7 @@ recovery-score/
 └── LICENSE       <- MIT License
 ```
 
-## Setup
+## Hosting / Deployment
 
 ```bash
 # Clone
@@ -211,6 +250,7 @@ No server. No npm install. No build step. One HTML file.
 - [ ] Trend analysis with 7-day and 30-day moving averages
 - [ ] Training load integration (RPE x duration) for load:recovery ratio
 - [ ] Correlation analysis — which metrics best predict individual performance
+- [ ] Native watchOS complication showing the score on your wrist
 
 ## References
 
