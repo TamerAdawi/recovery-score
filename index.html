@@ -4,269 +4,365 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Recovery Score</title>
-<meta name="description" content="A data-driven recovery scoring system using HRV, Resting Heart Rate, and Sleep data against a 14-day rolling baseline.">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--go:#00FF88;--go-dim:rgba(0,255,136,0.12);--caution:#FFB800;--caution-dim:rgba(255,184,0,0.12);--rest:#FF3B3B;--rest-dim:rgba(255,59,59,0.12);--bg:#05050A;--card:rgba(255,255,255,0.025);--border:rgba(255,255,255,0.06);--text-primary:#F0F0F5;--text-secondary:rgba(255,255,255,0.5);--text-muted:rgba(255,255,255,0.2);--font-display:'Outfit',-apple-system,sans-serif;--font-mono:'IBM Plex Mono','SF Mono',monospace;--radius-sm:10px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px}
+:root{--go:#00FF88;--god:rgba(0,255,136,0.12);--ca:#FFB800;--cad:rgba(255,184,0,0.12);--re:#FF3B3B;--red:rgba(255,59,59,0.12);--bg:#05050A;--card:rgba(255,255,255,0.025);--bdr:rgba(255,255,255,0.06);--t1:#F0F0F5;--t2:rgba(255,255,255,0.5);--t3:rgba(255,255,255,0.2);--fd:'Outfit',-apple-system,sans-serif;--fm:'IBM Plex Mono','SF Mono',monospace}
 *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text-primary);font-family:var(--font-display);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-.container{max-width:480px;margin:0 auto;padding:0 20px}.mono{font-family:var(--font-mono)}.hidden{display:none!important}
-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(5,5,10,0.88);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border-top:1px solid var(--border);padding:10px 0 env(safe-area-inset-bottom,8px)}
-.nav-inner{max-width:480px;margin:0 auto;display:flex;justify-content:center;gap:4px;padding:0 16px}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;background:none;border:none;color:var(--text-muted);font-family:var(--font-mono);font-size:9px;letter-spacing:1px;cursor:pointer;transition:color 0.3s;-webkit-tap-highlight-color:transparent}
-.nav-btn .nav-icon{font-size:20px;transition:transform 0.2s}.nav-btn.active{color:var(--go)}.nav-btn:active .nav-icon{transform:scale(0.9)}
-.section{min-height:100vh;min-height:100dvh;padding-bottom:80px}
-#landing{display:flex;flex-direction:column;justify-content:center;position:relative}
-#landing::before{content:'';position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(0,255,136,0.06) 0%,transparent 70%);top:15%;left:50%;transform:translateX(-50%);pointer-events:none}
-.landing-content{position:relative;z-index:1;padding-top:80px}
-.landing-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:var(--go-dim);border:1px solid rgba(0,255,136,0.15);border-radius:100px;font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--go);letter-spacing:1.5px;margin-bottom:24px;opacity:0;animation:fadeUp 0.6s 0.2s forwards}
-.landing-title{font-size:44px;font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:20px;opacity:0;animation:fadeUp 0.7s 0.35s forwards}
-.landing-title .accent{color:var(--go)}
-.landing-desc{font-size:16px;font-weight:300;color:var(--text-secondary);line-height:1.7;max-width:380px;margin-bottom:32px;opacity:0;animation:fadeUp 0.6s 0.5s forwards}
-.landing-formula-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:28px;opacity:0;animation:fadeUp 0.6s 0.65s forwards}
-.landing-formula-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:2px;margin-bottom:12px}
-.landing-formula-text{font-family:var(--font-mono);font-size:13px;color:var(--text-primary);line-height:2}
-.landing-formula-text .w{color:var(--text-muted);font-size:11px}
-.zone-chips{display:flex;gap:10px;margin-top:16px}
-.zone-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;font-family:var(--font-mono);font-size:10px;font-weight:600}
-.zone-chip.go{background:var(--go-dim);color:var(--go);border:1px solid rgba(0,255,136,0.12)}
-.zone-chip.caution{background:var(--caution-dim);color:var(--caution);border:1px solid rgba(255,184,0,0.12)}
-.zone-chip.rest{background:var(--rest-dim);color:var(--rest);border:1px solid rgba(255,59,59,0.12)}
-.landing-features{display:grid;gap:12px;margin-bottom:32px;opacity:0;animation:fadeUp 0.6s 0.8s forwards}
-.feature-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md)}
-.feature-icon{font-size:18px;flex-shrink:0}.feature-text{font-size:13px;color:var(--text-secondary);line-height:1.5}.feature-text strong{color:var(--text-primary);font-weight:600}
-.landing-cta{display:block;width:100%;padding:16px;background:var(--go);color:#000;border:none;border-radius:var(--radius-md);font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:2px;text-align:center;cursor:pointer;transition:all 0.3s;opacity:0;animation:fadeUp 0.6s 0.95s forwards;-webkit-tap-highlight-color:transparent}
-.landing-cta:active{transform:scale(0.97)}
-.landing-stack{margin-top:20px;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:1px;opacity:0;animation:fadeUp 0.5s 1.1s forwards}
-#dashboard{padding-top:32px}
-.dash-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px}
-.dash-brand h1{font-family:var(--font-mono);font-size:17px;font-weight:700}
-.dash-brand .sub{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1.5px;margin-top:3px}
-.dash-date{font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
-.score-hero{display:flex;flex-direction:column;align-items:center;padding:24px 0 16px;margin-bottom:24px;border-radius:var(--radius-xl);transition:background 0.8s}
-.ring-wrap{position:relative;width:190px;height:190px}.ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring-track{fill:none;stroke:rgba(255,255,255,0.04);stroke-width:7}
-.ring-arc{fill:none;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1),stroke 0.6s}
-.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.ring-score{font-family:var(--font-mono);font-size:54px;font-weight:700;letter-spacing:-3px;line-height:1;transition:color 0.6s;opacity:0;transform:translateY(8px);animation:fadeUp 0.8s 0.2s forwards}
-.ring-zone{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:4px;margin-top:6px;transition:color 0.6s;opacity:0;animation:fadeUp 0.6s 0.35s forwards}
-.ring-rec{font-size:13px;color:var(--text-secondary);margin-top:14px;text-align:center;opacity:0;animation:fadeUp 0.5s 0.5s forwards}
-.metrics-grid{display:grid;gap:12px;margin-bottom:20px}
-.m-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 18px;opacity:0;transform:translateY(10px)}
-.m-card:nth-child(1){animation:fadeUp 0.5s 0.3s forwards}.m-card:nth-child(2){animation:fadeUp 0.5s 0.42s forwards}.m-card:nth-child(3){animation:fadeUp 0.5s 0.54s forwards}
-.m-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.m-label{display:flex;align-items:center;gap:6px}.m-label .icon{font-size:13px}
-.m-label .name{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase}
-.m-badge{font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
-.m-values{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
-.m-val{font-family:var(--font-mono);font-size:26px;font-weight:700;letter-spacing:-1px}
-.m-unit{font-size:12px;color:var(--text-secondary);margin-left:4px}
-.m-base{font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
-.m-bar{height:3px;border-radius:2px;background:rgba(255,255,255,0.04);overflow:hidden}
-.m-bar-fill{height:100%;border-radius:2px;transition:width 1.2s cubic-bezier(0.4,0,0.2,1);width:0%}
-.history-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 18px;margin-bottom:20px}
-.history-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1.5px;margin-bottom:14px}
-.history-bars{display:flex;gap:6px;align-items:flex-end;height:80px}
-.h-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-.h-bar-outer{width:100%;height:60px;border-radius:4px;background:rgba(255,255,255,0.03);position:relative;overflow:hidden}
-.h-bar-inner{position:absolute;bottom:0;width:100%;border-radius:4px;transition:height 1s cubic-bezier(0.4,0,0.2,1)}
-.h-bar-score{font-family:var(--font-mono);font-size:9px;font-weight:600;color:var(--text-secondary)}
-.h-bar-day{font-family:var(--font-mono);font-size:8px;color:var(--text-muted)}
-#input-section{padding-top:32px}
-.input-header{margin-bottom:28px}.input-header h2{font-family:var(--font-mono);font-size:17px;font-weight:700;margin-bottom:6px}
-.input-header p{font-size:13px;color:var(--text-secondary);line-height:1.6}
-.input-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:16px}
-.input-card-label{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:1.5px;margin-bottom:16px}
-.input-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
-.input-group{display:flex;flex-direction:column;gap:5px}
-.input-group label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px}
-.input-group input{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;color:var(--text-primary);font-family:var(--font-mono);font-size:15px;font-weight:600;outline:none;transition:border-color 0.3s;-webkit-appearance:none;width:100%}
-.input-group input:focus{border-color:var(--go)}.input-group input::placeholder{color:var(--text-muted)}
-.submit-btn{width:100%;padding:15px;background:var(--go);color:#000;border:none;border-radius:var(--radius-md);font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all 0.3s;-webkit-tap-highlight-color:transparent}
-.submit-btn:active{transform:scale(0.97);opacity:0.9}
-.baseline-info{margin-top:16px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md)}
-.baseline-info-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1.5px;margin-bottom:8px}
-.log-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-top:20px}
-.log-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1.5px;margin-bottom:12px}
-.log-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
-.log-row:last-child{border-bottom:none}
-.log-date{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary)}
-.log-vals{font-family:var(--font-mono);font-size:9px;color:var(--text-muted)}
-.log-score{font-family:var(--font-mono);font-size:14px;font-weight:700}
-.log-zone{font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:1px;padding:3px 8px;border-radius:100px}
-.log-empty{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);text-align:center;padding:20px 0}
-.clear-btn{margin-top:12px;width:100%;padding:10px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:10px;color:var(--text-muted);cursor:pointer;transition:border-color 0.3s,color 0.3s}
-.clear-btn:hover{border-color:var(--rest);color:var(--rest)}
-#about{padding-top:32px}
-.about-header h2{font-family:var(--font-mono);font-size:17px;font-weight:700;margin-bottom:6px}
-.about-header p{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px}
-.about-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:12px}
-.about-card h3{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--go);margin-bottom:10px}
-.about-card p{font-size:13px;color:var(--text-secondary);line-height:1.7}
-.about-card code{font-family:var(--font-mono);font-size:11px;color:var(--text-primary);background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px}
-@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+body{background:var(--bg);color:var(--t1);font-family:var(--fd);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.ctr{max-width:480px;margin:0 auto;padding:0 20px}.hid{display:none!important}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(5,5,10,0.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--bdr);padding:10px 0 env(safe-area-inset-bottom,8px)}
+.ni{max-width:480px;margin:0 auto;display:flex;justify-content:center;gap:4px;padding:0 16px}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;background:none;border:none;color:var(--t3);font-family:var(--fm);font-size:9px;letter-spacing:1px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.nb .ico{font-size:20px}.nb.act{color:var(--go)}
+.sec{min-height:100vh;min-height:100dvh;padding-bottom:80px}
+#land{display:flex;flex-direction:column;justify-content:center;position:relative}
+#land::before{content:'';position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(0,255,136,0.06) 0%,transparent 70%);top:15%;left:50%;transform:translateX(-50%);pointer-events:none}
+.lcon{position:relative;z-index:1;padding-top:80px}
+.bdg{display:inline-flex;padding:6px 14px;background:var(--god);border:1px solid rgba(0,255,136,0.15);border-radius:100px;font-family:var(--fm);font-size:10px;font-weight:600;color:var(--go);letter-spacing:1.5px;margin-bottom:24px;opacity:0;animation:fu .6s .2s forwards}
+.ltit{font-size:42px;font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:20px;opacity:0;animation:fu .7s .35s forwards}
+.ltit .ac{color:var(--go)}
+.ldsc{font-size:16px;font-weight:300;color:var(--t2);line-height:1.7;max-width:380px;margin-bottom:32px;opacity:0;animation:fu .6s .5s forwards}
+.fcard{background:var(--card);border:1px solid var(--bdr);border-radius:24px;padding:24px;margin-bottom:28px;opacity:0;animation:fu .6s .65s forwards}
+.fcl{font-family:var(--fm);font-size:9px;color:var(--t3);letter-spacing:2px;margin-bottom:12px}
+.fct{font-family:var(--fm);font-size:13px;color:var(--t1);line-height:2.2}
+.fct .w{color:var(--t3);font-size:11px}
+.zchips{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.zc{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;font-family:var(--fm);font-size:10px;font-weight:600}
+.zc.go{background:var(--god);color:var(--go);border:1px solid rgba(0,255,136,0.12)}
+.zc.ca{background:var(--cad);color:var(--ca);border:1px solid rgba(255,184,0,0.12)}
+.zc.re{background:var(--red);color:var(--re);border:1px solid rgba(255,59,59,0.12)}
+.feats{display:grid;gap:12px;margin-bottom:32px;opacity:0;animation:fu .6s .8s forwards}
+.feat{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border:1px solid var(--bdr);border-radius:16px}
+.feat .ic{font-size:18px;flex-shrink:0}.feat .tx{font-size:13px;color:var(--t2);line-height:1.5}.feat .tx b{color:var(--t1);font-weight:600}
+.cta{display:block;width:100%;padding:16px;background:var(--go);color:#000;border:none;border-radius:16px;font-family:var(--fm);font-size:13px;font-weight:700;letter-spacing:2px;text-align:center;cursor:pointer;opacity:0;animation:fu .6s .95s forwards;-webkit-tap-highlight-color:transparent}
+.cta:active{transform:scale(.97)}
+.lstk{margin-top:20px;text-align:center;font-family:var(--fm);font-size:10px;color:var(--t3);letter-spacing:1px;opacity:0;animation:fu .5s 1.1s forwards}
+#dash{padding-top:32px}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px}
+.dhb h1{font-family:var(--fm);font-size:17px;font-weight:700}
+.dhb .sub{font-family:var(--fm);font-size:9px;color:var(--t3);letter-spacing:1.5px;margin-top:3px}
+.ddt{font-family:var(--fm);font-size:10px;color:var(--t3)}
+.shero{display:flex;flex-direction:column;align-items:center;padding:24px 0 16px;margin-bottom:24px;border-radius:32px}
+.rwr{position:relative;width:190px;height:190px}.rwr svg{width:100%;height:100%;transform:rotate(-90deg)}
+.rtrk{fill:none;stroke:rgba(255,255,255,0.04);stroke-width:7}
+.rarc{fill:none;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1),stroke .6s}
+.rcen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.rscr{font-family:var(--fm);font-size:54px;font-weight:700;letter-spacing:-3px;line-height:1;opacity:0;transform:translateY(8px);animation:fu .8s .2s forwards}
+.rzon{font-family:var(--fm);font-size:11px;font-weight:600;letter-spacing:4px;margin-top:6px;opacity:0;animation:fu .6s .35s forwards}
+.rrec{font-size:13px;color:var(--t2);margin-top:14px;text-align:center;max-width:320px;opacity:0;animation:fu .5s .5s forwards}
+.mgrid{display:grid;gap:12px;margin-bottom:20px}
+.mcard{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:16px 18px;opacity:0;transform:translateY(10px)}
+.mcard:nth-child(1){animation:fu .5s .3s forwards}.mcard:nth-child(2){animation:fu .5s .4s forwards}
+.mcard:nth-child(3){animation:fu .5s .5s forwards}.mcard:nth-child(4){animation:fu .5s .6s forwards}
+.mhd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.mlb{display:flex;align-items:center;gap:6px}.mlb .ic{font-size:13px}
+.mlb .nm{font-family:var(--fm);font-size:10px;font-weight:500;color:var(--t3);letter-spacing:1.5px;text-transform:uppercase}
+.mbdg{font-family:var(--fm);font-size:10px;color:var(--t3)}
+.mvls{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.mvl{font-family:var(--fm);font-size:26px;font-weight:700;letter-spacing:-1px}
+.munt{font-size:12px;color:var(--t2);margin-left:4px}
+.mbsl{font-family:var(--fm);font-size:10px;color:var(--t3)}
+.mbar{height:3px;border-radius:2px;background:rgba(255,255,255,0.04);overflow:hidden}
+.mbfl{height:100%;border-radius:2px;transition:width 1.2s cubic-bezier(.4,0,.2,1);width:0%}
+.hcard{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:16px 18px;margin-bottom:20px}
+.hlbl{font-family:var(--fm);font-size:9px;color:var(--t3);letter-spacing:1.5px;margin-bottom:14px}
+.hbars{display:flex;gap:6px;align-items:flex-end;height:80px}
+.hcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.hout{width:100%;height:60px;border-radius:4px;background:rgba(255,255,255,0.03);position:relative;overflow:hidden}
+.hinn{position:absolute;bottom:0;width:100%;border-radius:4px;transition:height 1s cubic-bezier(.4,0,.2,1)}
+.hsc{font-family:var(--fm);font-size:9px;font-weight:600;color:var(--t2)}
+.hdy{font-family:var(--fm);font-size:8px;color:var(--t3)}
+#inp{padding-top:32px}
+.inh{margin-bottom:28px}.inh h2{font-family:var(--fm);font-size:17px;font-weight:700;margin-bottom:6px}
+.inh p{font-size:13px;color:var(--t2);line-height:1.6}
+.incard{background:var(--card);border:1px solid var(--bdr);border-radius:24px;padding:24px;margin-bottom:16px}
+.incl{font-family:var(--fm);font-size:10px;color:var(--t3);letter-spacing:1.5px;margin-bottom:16px}
+.inrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.ing{display:flex;flex-direction:column;gap:5px}
+.ing label{font-family:var(--fm);font-size:9px;color:var(--t3);letter-spacing:1px}
+.ing input{background:var(--bg);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;color:var(--t1);font-family:var(--fm);font-size:15px;font-weight:600;outline:none;-webkit-appearance:none;width:100%}
+.ing input:focus{border-color:var(--go)}.ing input::placeholder{color:var(--t3)}
+.sbtn{width:100%;padding:15px;background:var(--go);color:#000;border:none;border-radius:16px;font-family:var(--fm);font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sbtn:active{transform:scale(.97);opacity:.9}
+.lgcard{background:var(--card);border:1px solid var(--bdr);border-radius:24px;padding:20px;margin-top:20px}
+.lglbl{font-family:var(--fm);font-size:9px;color:var(--t3);letter-spacing:1.5px;margin-bottom:12px}
+.lgrow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bdr)}
+.lgrow:last-child{border-bottom:none}
+.lgdt{font-family:var(--fm);font-size:11px;color:var(--t2)}
+.lgvl{font-family:var(--fm);font-size:9px;color:var(--t3)}
+.lgsc{font-family:var(--fm);font-size:14px;font-weight:700}
+.lgzn{font-family:var(--fm);font-size:9px;font-weight:600;letter-spacing:1px;padding:3px 8px;border-radius:100px}
+.lge{font-family:var(--fm);font-size:11px;color:var(--t3);text-align:center;padding:20px 0}
+.clr{margin-top:12px;width:100%;padding:10px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:var(--fm);font-size:10px;color:var(--t3);cursor:pointer}
+.clr:hover{border-color:var(--re);color:var(--re)}
+#abt{padding-top:32px}
+.abh h2{font-family:var(--fm);font-size:17px;font-weight:700;margin-bottom:6px}
+.abh p{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:24px}
+.abc{background:var(--card);border:1px solid var(--bdr);border-radius:24px;padding:20px;margin-bottom:12px}
+.abc h3{font-family:var(--fm);font-size:12px;font-weight:600;color:var(--go);margin-bottom:10px}
+.abc p{font-size:13px;color:var(--t2);line-height:1.7}
+.abc code{font-family:var(--fm);font-size:11px;color:var(--t1);background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px}
+@keyframes fu{to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
-<section id="landing" class="section">
-<div class="container landing-content">
-<div class="landing-badge">ADAPTIVE RECOVERY MODEL</div>
-<h1 class="landing-title">Know when to<br><span class="accent">push</span> and when<br>to <span class="accent">recover</span>.</h1>
-<p class="landing-desc">A data-driven recovery scoring system that compares your daily HRV, resting heart rate, and sleep against a rolling 14-day baseline.</p>
-<div class="landing-formula-card">
-<div class="landing-formula-label">THE MODEL</div>
-<div class="landing-formula-text">Score = HRV vs baseline <span class="w">x 40%</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ RHR vs baseline <span class="w">x 30%</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ Sleep quality <span class="w">x 30%</span></div>
-<div class="zone-chips">
-<span class="zone-chip go">60+ GO</span>
-<span class="zone-chip caution">40-59 CAUTION</span>
-<span class="zone-chip rest">&lt;40 REST</span>
+<section id="land" class="sec">
+<div class="ctr lcon">
+<div class="bdg">ADAPTIVE RECOVERY MODEL v2</div>
+<h1 class="ltit">Know when to<br><span class="ac">push</span> and when<br>to <span class="ac">recover</span>.</h1>
+<p class="ldsc">A data-driven recovery scoring system comparing your HRV, resting heart rate, total sleep, and deep sleep against a personalized 14-day rolling baseline.</p>
+<div class="fcard">
+<div class="fcl">THE MODEL</div>
+<div class="fct">HRV vs 14-day baseline <span class="w">x 40%</span><br>+ RHR vs 14-day baseline <span class="w">x 30%</span><br>+ Sleep quality (hours + deep) <span class="w">x 30%</span></div>
+<div class="zchips">
+<span class="zc go">60+ TRAIN HARD</span>
+<span class="zc ca">40-59 BACK OFF 10%</span>
+<span class="zc re">&lt;40 REST / WALK</span>
 </div></div>
-<div class="landing-features">
-<div class="feature-row"><span class="feature-icon">📊</span><span class="feature-text"><strong>14-day rolling baseline</strong> — adapts to your personal physiology</span></div>
-<div class="feature-row"><span class="feature-icon">⌚</span><span class="feature-text"><strong>Apple Watch integration</strong> — feed 3 values via Shortcuts, the app does the rest</span></div>
-<div class="feature-row"><span class="feature-icon">📈</span><span class="feature-text"><strong>Auto baselines</strong> — tracks history and computes rolling averages automatically</span></div>
+<div class="feats">
+<div class="feat"><span class="ic">💓</span><span class="tx"><b>HRV is king (40%)</b> — high-HRV days produce ~10% more training volume</span></div>
+<div class="feat"><span class="ic">📊</span><span class="tx"><b>Personal baselines</b> — pulled from Apple Health's 14-day averages via Shortcuts</span></div>
+<div class="feat"><span class="ic">🌙</span><span class="tx"><b>Deep sleep bonus</b> — 45+ min deep sleep boosts score, rewarding real recovery</span></div>
+<div class="feat"><span class="ic">⌚</span><span class="tx"><b>Fully automated</b> — Shortcut pulls all 8 values, opens the dashboard instantly</span></div>
 </div>
-<button class="landing-cta" onclick="navigate('dashboard')">OPEN DASHBOARD</button>
-<div class="landing-stack">HTML / CSS / JAVASCRIPT</div>
+<button class="cta" onclick="nav('dash')">OPEN DASHBOARD</button>
+<div class="lstk">HTML / CSS / JAVASCRIPT — ZERO DEPENDENCIES</div>
 </div></section>
 
-<section id="dashboard" class="section hidden">
-<div class="container">
-<div class="dash-header"><div class="dash-brand"><h1>RECOVERY<span id="dash-dot" style="color:var(--go)">.</span></h1><div class="sub">14-DAY ADAPTIVE MODEL</div></div><span class="dash-date" id="dash-date"></span></div>
-<div id="dash-content"></div>
+<section id="dash" class="sec hid">
+<div class="ctr">
+<div class="dh"><div class="dhb"><h1>RECOVERY<span id="ddot" style="color:var(--go)">.</span></h1><div class="sub">14-DAY ADAPTIVE MODEL</div></div><span class="ddt" id="ddate"></span></div>
+<div id="dcont"></div>
 </div></section>
 
-<section id="input-section" class="section hidden">
-<div class="container">
-<div class="input-header"><h2>Log Entry</h2><p>Enter today's 3 values. The app automatically computes baselines from your history.</p></div>
-<div class="input-card">
-<div class="input-card-label">TODAY'S READINGS</div>
-<div class="input-row">
-<div class="input-group"><label>HRV (ms)</label><input type="number" id="in-hrv" placeholder="45" step="0.1"></div>
-<div class="input-group"><label>RHR (bpm)</label><input type="number" id="in-rhr" placeholder="58" step="0.1"></div>
-<div class="input-group"><label>SLEEP (hrs)</label><input type="number" id="in-sleep" placeholder="7.2" step="0.1"></div>
+<section id="inp" class="sec hid">
+<div class="ctr">
+<div class="inh"><h2>Log Entry</h2><p>Enter today's values and baselines. If using Shortcuts, the URL auto-fills everything.</p></div>
+<div class="incard">
+<div class="incl">TODAY'S READINGS</div>
+<div class="inrow">
+<div class="ing"><label>HRV (ms)</label><input type="number" id="i-hrv" placeholder="45" step="0.1"></div>
+<div class="ing"><label>RHR (bpm)</label><input type="number" id="i-rhr" placeholder="58" step="0.1"></div>
+</div>
+<div class="inrow">
+<div class="ing"><label>SLEEP (hours)</label><input type="number" id="i-slp" placeholder="7.5" step="0.1"></div>
+<div class="ing"><label>DEEP SLEEP (min)</label><input type="number" id="i-deep" placeholder="55" step="1"></div>
 </div></div>
-<button class="submit-btn" onclick="submitEntry()">COMPUTE & LOG SCORE</button>
-<div class="baseline-info" id="baseline-info"></div>
-<div class="log-card"><div class="log-label">HISTORY LOG</div><div id="log-list"></div>
-<button class="clear-btn hidden" id="clear-btn" onclick="clearHistory()">CLEAR ALL DATA</button>
+<div class="incard">
+<div class="incl">14-DAY BASELINES</div>
+<div class="inrow">
+<div class="ing"><label>AVG HRV (ms)</label><input type="number" id="i-bhrv" placeholder="40" step="0.1"></div>
+<div class="ing"><label>AVG RHR (bpm)</label><input type="number" id="i-brhr" placeholder="60" step="0.1"></div>
+</div>
+<div class="inrow">
+<div class="ing"><label>AVG SLEEP (hours)</label><input type="number" id="i-bslp" placeholder="8" step="0.1"></div>
+<div class="ing"><label>AVG DEEP (min)</label><input type="number" id="i-bdeep" placeholder="45" step="1"></div>
+</div></div>
+<button class="sbtn" onclick="submit()">COMPUTE & LOG SCORE</button>
+<div class="lgcard"><div class="lglbl">HISTORY LOG</div><div id="lglist"></div>
+<button class="clr hid" id="clrbtn" onclick="clrHist()">CLEAR ALL DATA</button>
 </div></div></section>
 
-<section id="about" class="section hidden">
-<div class="container">
-<div class="about-header"><h2>How It Works</h2><p>The science and math behind your recovery score.</p></div>
-<div class="about-card"><h3>Heart Rate Variability (40%)</h3><p>HRV measures variation between heartbeats. Higher = better recovery. Score compares today vs your 14-day average: <code>ratio = today / baseline</code>.</p></div>
-<div class="about-card"><h3>Resting Heart Rate (30%)</h3><p>Lower RHR = better recovery. Uses inverse ratio: <code>ratio = baseline / today</code>. Below baseline = higher score.</p></div>
-<div class="about-card"><h3>Sleep Quality (30%)</h3><p>7-9 hours optimal (base 60), 6-7h moderate (base 40), under 6h poor (base 20). Bonuses for baseline consistency and 7.5h+.</p></div>
-<div class="about-card"><h3>Why 14-Day Rolling Baseline?</h3><p>Population averages are misleading. Your own 14-day rolling average adapts to YOUR physiology and detects relative changes that matter.</p></div>
-<div class="about-card"><h3>Apple Shortcuts</h3><p>Shortcut passes 3 values via URL: <code>?hrv=45&rhr=58&sleep=7.2</code>. The app auto-computes baselines from stored history. Sleep can be hours, minutes, or seconds — auto-detected.</p></div>
-<div class="about-card"><h3>Built With</h3><p>Pure HTML, CSS, and JavaScript. No frameworks. Data in localStorage. Hosted on GitHub Pages.</p></div>
+<section id="abt" class="sec hid">
+<div class="ctr">
+<div class="abh"><h2>How It Works</h2><p>The science and math behind your recovery score.</p></div>
+<div class="abc"><h3>HRV — Heart Rate Variability (40%)</h3><p>Today's HRV compared to your 14-day rolling average from Apple Health. HRV 30ms above baseline scores near 100. At baseline = ~65. 30ms below = ~0. Highest weight because high-HRV days produce ~10% more training volume.</p></div>
+<div class="abc"><h3>RHR — Resting Heart Rate (30%)</h3><p>Today's RHR compared to your 14-day average. RHR 10bpm below baseline = ~100. At baseline = ~65. 5+ bpm above baseline is a reliable warning sign of fatigue, poor sleep, or illness.</p></div>
+<div class="abc"><h3>Sleep Quality (30%)</h3><p>Combines total sleep hours (target 8h) and deep sleep minutes (bonus above 45min). 9+ hours with 70+ min deep = near 100. Hours weighted 60%, deep sleep 40% within this component.</p></div>
+<div class="abc"><h3>Shortcut URL Format</h3><p>8 parameters, all from Apple Health via Shortcuts:<br><code>?hrv=45&rhr=58&sleep=7.5&deep=55&bhrv=42&brhr=60&bslp=8&bdeep=48</code><br>Sleep auto-detects seconds/minutes/hours. Baselines fall back to stored history if missing from URL.</p></div>
 </div></section>
 
-<nav><div class="nav-inner">
-<button class="nav-btn active" onclick="navigate('landing')" data-section="landing"><span class="nav-icon">◉</span>HOME</button>
-<button class="nav-btn" onclick="navigate('dashboard')" data-section="dashboard"><span class="nav-icon">◎</span>SCORE</button>
-<button class="nav-btn" onclick="navigate('input-section')" data-section="input-section"><span class="nav-icon">⊕</span>INPUT</button>
-<button class="nav-btn" onclick="navigate('about')" data-section="about"><span class="nav-icon">≡</span>ABOUT</button>
+<nav><div class="ni">
+<button class="nb act" onclick="nav('land')" data-s="land"><span class="ico">◉</span>HOME</button>
+<button class="nb" onclick="nav('dash')" data-s="dash"><span class="ico">◎</span>SCORE</button>
+<button class="nb" onclick="nav('inp')" data-s="inp"><span class="ico">⊕</span>INPUT</button>
+<button class="nb" onclick="nav('abt')" data-s="abt"><span class="ico">≡</span>ABOUT</button>
 </div></nav>
 
 <script>
-const STORAGE_KEY='recovery_history_v2';
+var SK='recovery_v3';
+
 function clamp(v){return Math.min(100,Math.max(0,Math.round(v)))}
-function scoreHRV(t,b){if(!t||!b||b===0)return null;const r=t/b;return clamp(r*50+(r>=1?25:-10))}
-function scoreRHR(t,b){if(!t||!b||t===0)return null;const r=b/t;return clamp(r*50+(t<=b?25:-10))}
-function scoreSleep(t,b){if(!t)return null;let s=t>=7&&t<=9?60:t>=6?40:20;if(b&&b>0&&(t/b)>=0.95)s+=20;if(t>=7.5)s+=10;return clamp(s)}
-function computeRecovery(tH,tR,tS,bH,bR,bS){
-  const h=scoreHRV(tH,bH),r=scoreRHR(tR,bR),s=scoreSleep(tS,bS);
-  const c=[{score:h,w:0.4},{score:r,w:0.3},{score:s,w:0.3}].filter(x=>x.score!==null);
-  const tw=c.reduce((a,x)=>a+x.w,0);
-  const comp=tw>0?Math.round(c.reduce((a,x)=>a+x.score*(x.w/tw),0)):null;
-  const zone=comp===null?'N/A':comp>=60?'GO':comp>=40?'CAUTION':'REST';
-  return{composite:comp,zone,hrvScore:h,rhrScore:r,sleepScore:s}
-}
-function getHistory(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[]}catch{return[]}}
-function saveToHistory(e){const h=getHistory();const i=h.findIndex(x=>x.date===e.date);if(i>=0)h[i]=e;else h.push(e);localStorage.setItem(STORAGE_KEY,JSON.stringify(h.slice(-90)))}
-function clearHistory(){if(confirm('Clear all history?')){localStorage.removeItem(STORAGE_KEY);renderLog();renderDashboard()}}
-function getBaselines(){
-  const h=getHistory(),today=new Date().toISOString().split('T')[0];
-  const cut=new Date();cut.setDate(cut.getDate()-14);const cs=cut.toISOString().split('T')[0];
-  const bl=h.filter(e=>e.date>=cs&&e.date<today);
-  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
-  return{bHRV:avg(bl.map(e=>e.todayHRV).filter(v=>v!=null&&v>0)),bRHR:avg(bl.map(e=>e.todayRHR).filter(v=>v!=null&&v>0)),bSleep:avg(bl.map(e=>e.todaySleep).filter(v=>v!=null&&v>0)),days:bl.length}
-}
-function normalizeSleep(v){if(v===null||v===undefined||isNaN(v))return null;if(v>1440)return+(v/3600).toFixed(2);if(v>24)return+(v/60).toFixed(2);return+v.toFixed(2)}
-function zoneColor(z){return z==='GO'?'var(--go)':z==='CAUTION'?'var(--caution)':z==='REST'?'var(--rest)':'var(--text-muted)'}
-function zoneHex(z){return z==='GO'?'#00FF88':z==='CAUTION'?'#FFB800':z==='REST'?'#FF3B3B':'#666'}
-function zoneDim(z){return z==='GO'?'var(--go-dim)':z==='CAUTION'?'var(--caution-dim)':z==='REST'?'var(--rest-dim)':'rgba(255,255,255,0.05)'}
-function zoneRec(z){if(z==='GO')return'Fully recovered. Push hard today.';if(z==='CAUTION')return'Moderate intensity. Listen to your body.';if(z==='REST')return'Prioritize recovery. Light movement only.';return'Not enough data yet.'}
-function barCol(s){return s===null?'#333':s>=60?'var(--go)':s>=40?'var(--caution)':'var(--rest)'}
 
-function navigate(id){
-  document.querySelectorAll('.section').forEach(s=>s.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.section===id));
+function scoreHRV(today,baseline){
+  if(!today||!baseline) return null;
+  var diff=today-baseline;
+  return clamp(65+(diff/30)*35);
+}
+
+function scoreRHR(today,baseline){
+  if(!today||!baseline) return null;
+  var diff=baseline-today;
+  return clamp(65+(diff/10)*35);
+}
+
+function scoreSleep(hours,deepMin,bHours,bDeep){
+  if(!hours&&!deepMin) return null;
+  var hScore=0;
+  if(hours){
+    if(hours>=9) hScore=90;
+    else if(hours>=8) hScore=75;
+    else if(hours>=7) hScore=60;
+    else if(hours>=6) hScore=40;
+    else if(hours>=5) hScore=25;
+    else hScore=10;
+    if(bHours&&bHours>0){
+      var r=hours/bHours;
+      if(r>=1.05) hScore=Math.min(100,hScore+10);
+      else if(r>=0.95) hScore=Math.min(100,hScore+5);
+      else if(r<0.85) hScore=Math.max(0,hScore-10);
+    }
+  }
+  var dScore=0,hasD=deepMin!=null&&deepMin>0;
+  if(hasD){
+    if(deepMin>=70) dScore=100;
+    else if(deepMin>=55) dScore=80;
+    else if(deepMin>=45) dScore=65;
+    else if(deepMin>=30) dScore=45;
+    else if(deepMin>=20) dScore=30;
+    else dScore=15;
+    if(bDeep&&bDeep>0){
+      var r2=deepMin/bDeep;
+      if(r2>=1.1) dScore=Math.min(100,dScore+10);
+      else if(r2<0.8) dScore=Math.max(0,dScore-10);
+    }
+  }
+  if(hasD&&hours) return clamp(hScore*0.6+dScore*0.4);
+  if(hours) return clamp(hScore);
+  if(hasD) return clamp(dScore);
+  return null;
+}
+
+function compute(tH,tR,tS,tD,bH,bR,bS,bD){
+  var h=scoreHRV(tH,bH),r=scoreRHR(tR,bR),s=scoreSleep(tS,tD,bS,bD);
+  var cs=[{s:h,w:.4},{s:r,w:.3},{s:s,w:.3}].filter(function(x){return x.s!==null});
+  var tw=cs.reduce(function(a,x){return a+x.w},0);
+  var comp=tw>0?Math.round(cs.reduce(function(a,x){return a+x.s*(x.w/tw)},0)):null;
+  var zone=comp===null?'N/A':comp>=60?'GO':comp>=40?'CAUTION':'REST';
+  return{composite:comp,zone:zone,hrvScore:h,rhrScore:r,sleepScore:s}
+}
+
+function hist(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
+function saveE(e){var h=hist();var i=-1;for(var x=0;x<h.length;x++){if(h[x].date===e.date){i=x;break}}if(i>=0)h[i]=e;else h.push(e);localStorage.setItem(SK,JSON.stringify(h.slice(-90)))}
+function clrHist(){if(confirm('Clear all history?')){localStorage.removeItem(SK);renderLog();renderDash()}}
+
+function storedBaselines(){
+  var h=hist(),td=new Date().toISOString().split('T')[0];
+  var cut=new Date();cut.setDate(cut.getDate()-14);var cs=cut.toISOString().split('T')[0];
+  var bl=h.filter(function(e){return e.date>=cs&&e.date<td});
+  function avg(arr){var f=arr.filter(function(v){return v!=null&&v>0});return f.length>=3?f.reduce(function(a,b){return a+b},0)/f.length:null}
+  return{bHRV:avg(bl.map(function(e){return e.todayHRV})),bRHR:avg(bl.map(function(e){return e.todayRHR})),bSleep:avg(bl.map(function(e){return e.todaySleep})),bDeep:avg(bl.map(function(e){return e.todayDeep})),days:bl.length}
+}
+
+function normSleep(v){if(v==null||isNaN(v))return null;if(v>1440)return+(v/3600).toFixed(2);if(v>24)return+(v/60).toFixed(2);return+v.toFixed(2)}
+function normDeep(v){if(v==null||isNaN(v)||v<=0)return null;if(v>1440)return+(v/60).toFixed(1);return+v.toFixed(1)}
+
+function zCol(z){return z==='GO'?'var(--go)':z==='CAUTION'?'var(--ca)':z==='REST'?'var(--re)':'var(--t3)'}
+function zHex(z){return z==='GO'?'#00FF88':z==='CAUTION'?'#FFB800':z==='REST'?'#FF3B3B':'#666'}
+function zDim(z){return z==='GO'?'var(--god)':z==='CAUTION'?'var(--cad)':z==='REST'?'var(--red)':'rgba(255,255,255,0.05)'}
+function zRec(z){if(z==='GO')return'Train as planned. Push for progression.';if(z==='CAUTION')return'Train but back off 5-10%. Skip PR attempts.';if(z==='REST')return'Replace session with a walk or full rest.';return'Not enough data yet.'}
+function bCol(s){return s===null?'#333':s>=60?'var(--go)':s>=40?'var(--ca)':'var(--re)'}
+function fmt(v){return v!=null?v:'--'}
+
+function nav(id){
+  document.querySelectorAll('.sec').forEach(function(s){s.classList.add('hid')});
+  document.getElementById(id).classList.remove('hid');
+  document.querySelectorAll('.nb').forEach(function(b){b.classList.toggle('act',b.dataset.s===id)});
   window.scrollTo(0,0);
-  if(id==='dashboard')renderDashboard();if(id==='input-section'){renderLog();renderBaselineInfo()}
+  if(id==='dash')renderDash();if(id==='inp')renderLog();
 }
 
-function submitEntry(){
-  const tH=parseFloat(document.getElementById('in-hrv').value);
-  const tR=parseFloat(document.getElementById('in-rhr').value);
-  const raw=parseFloat(document.getElementById('in-sleep').value);
-  const tS=normalizeSleep(raw);
-  if(isNaN(tH)&&isNaN(tR)&&(isNaN(raw)||raw<=0)){alert('Enter at least one value.');return}
-  const b=getBaselines();
-  const{composite,zone,hrvScore,rhrScore,sleepScore}=computeRecovery(isNaN(tH)?null:tH,isNaN(tR)?null:tR,tS,b.bHRV,b.bRHR,b.bSleep);
-  saveToHistory({date:new Date().toISOString().split('T')[0],composite,zone,hrvScore,rhrScore,sleepScore,todayHRV:isNaN(tH)?null:+tH.toFixed(1),todayRHR:isNaN(tR)?null:+tR.toFixed(1),todaySleep:tS,baselineHRV:b.bHRV?+b.bHRV.toFixed(1):null,baselineRHR:b.bRHR?+b.bRHR.toFixed(1):null,baselineSleep:b.bSleep?+b.bSleep.toFixed(1):null});
-  navigate('dashboard');
+function processAndSave(tH,tR,tS,tD,bH,bR,bS,bD){
+  // Normalize sleep values
+  tS=normSleep(tS);
+  tD=normDeep(tD);
+  bS=normSleep(bS);
+  bD=normDeep(bD);
+  
+  // Fall back to stored baselines if URL didn't provide them
+  var sb=storedBaselines();
+  if(!bH&&sb.bHRV) bH=sb.bHRV;
+  if(!bR&&sb.bRHR) bR=sb.bRHR;
+  if(!bS&&sb.bSleep) bS=sb.bSleep;
+  if(!bD&&sb.bDeep) bD=sb.bDeep;
+  
+  var res=compute(tH,tR,tS,tD,bH,bR,bS,bD);
+  var entry={
+    date:new Date().toISOString().split('T')[0],
+    composite:res.composite,zone:res.zone,
+    hrvScore:res.hrvScore,rhrScore:res.rhrScore,sleepScore:res.sleepScore,
+    todayHRV:tH?+tH.toFixed(1):null,todayRHR:tR?+tR.toFixed(1):null,
+    todaySleep:tS,todayDeep:tD,
+    baselineHRV:bH?+bH.toFixed(1):null,baselineRHR:bR?+bR.toFixed(1):null,
+    baselineSleep:bS?+bS.toFixed(1):null,baselineDeep:bD?+bD.toFixed(1):null
+  };
+  saveE(entry);
+  return entry;
 }
 
-function checkURLParams(){
-  const p=new URLSearchParams(window.location.search);
-  const hrv=parseFloat(p.get('hrv')),rhr=parseFloat(p.get('rhr')),raw=parseFloat(p.get('sleep'));
-  if(isNaN(hrv)&&isNaN(rhr)&&isNaN(raw))return false;
-  const tS=normalizeSleep(raw);const b=getBaselines();
-  const{composite,zone,hrvScore,rhrScore,sleepScore}=computeRecovery(isNaN(hrv)?null:hrv,isNaN(rhr)?null:rhr,tS,b.bHRV,b.bRHR,b.bSleep);
-  saveToHistory({date:new Date().toISOString().split('T')[0],composite,zone,hrvScore,rhrScore,sleepScore,todayHRV:isNaN(hrv)?null:+hrv.toFixed(1),todayRHR:isNaN(rhr)?null:+rhr.toFixed(1),todaySleep:tS,baselineHRV:b.bHRV?+b.bHRV.toFixed(1):null,baselineRHR:b.bRHR?+b.bRHR.toFixed(1):null,baselineSleep:b.bSleep?+b.bSleep.toFixed(1):null});
-  navigate('dashboard');return true;
+function submit(){
+  var tH=parseFloat(document.getElementById('i-hrv').value);
+  var tR=parseFloat(document.getElementById('i-rhr').value);
+  var rawS=parseFloat(document.getElementById('i-slp').value);
+  var rawD=parseFloat(document.getElementById('i-deep').value);
+  var bH=parseFloat(document.getElementById('i-bhrv').value);
+  var bR=parseFloat(document.getElementById('i-brhr').value);
+  var bS=parseFloat(document.getElementById('i-bslp').value);
+  var bD=parseFloat(document.getElementById('i-bdeep').value);
+  if(isNaN(tH)&&isNaN(tR)&&isNaN(rawS)){alert('Enter at least one value.');return}
+  processAndSave(isNaN(tH)?null:tH,isNaN(tR)?null:tR,isNaN(rawS)?null:rawS,isNaN(rawD)?null:rawD,isNaN(bH)?null:bH,isNaN(bR)?null:bR,isNaN(bS)?null:bS,isNaN(bD)?null:bD);
+  nav('dash');
 }
 
-function renderDashboard(){
-  const history=getHistory(),today=new Date().toISOString().split('T')[0];
-  document.getElementById('dash-date').textContent=today;
-  if(!history.length){document.getElementById('dash-content').innerHTML='<div style="text-align:center;padding:80px 0"><p style="font-size:40px;margin-bottom:16px">⌚</p><p class="mono" style="font-size:13px;color:var(--text-secondary)">No data yet</p><p style="font-size:12px;color:var(--text-muted);margin-top:8px">Log your first entry in the Input tab</p></div>';return}
-  const l=history[history.length-1],c=zoneHex(l.zone),R=83,C=2*Math.PI*R,off=C*(1-(l.composite||0)/100);
-  document.getElementById('dash-dot').style.color=c;const last7=history.slice(-7);
-  document.getElementById('dash-content').innerHTML=`
-    <div class="score-hero" style="background:radial-gradient(circle at 50% 40%,${c}11,transparent 70%)">
-      <div class="ring-wrap"><svg viewBox="0 0 190 190"><circle class="ring-track" cx="95" cy="95" r="${R}"/><circle class="ring-arc" cx="95" cy="95" r="${R}" stroke="${c}" stroke-dasharray="${C}" stroke-dashoffset="${off}" style="filter:drop-shadow(0 0 10px ${c}66)"/></svg>
-      <div class="ring-center"><div class="ring-score" style="color:${zoneColor(l.zone)}">${l.composite??'—'}</div><div class="ring-zone" style="color:${zoneColor(l.zone)}">${l.zone}</div></div></div>
-      <div class="ring-rec">${zoneRec(l.zone)}</div></div>
-    <div class="metrics-grid">${mCard('💓','HRV',l.todayHRV,'ms',l.hrvScore,l.baselineHRV)}${mCard('❤️','RESTING HR',l.todayRHR,'bpm',l.rhrScore,l.baselineRHR)}${mCard('🌙','SLEEP',l.todaySleep,'hrs',l.sleepScore,l.baselineSleep)}</div>
-    ${last7.length>1?'<div class="history-card"><div class="history-label">RECENT SCORES</div><div class="history-bars">'+last7.map(e=>{const h=Math.max(5,((e.composite||0)/100)*60),col=zoneHex(e.zone),d=new Date(e.date+'T00:00:00'),day=d.toLocaleDateString('en',{weekday:'short'}).toUpperCase();return'<div class="h-bar-col"><div class="h-bar-score">'+(e.composite??'—')+'</div><div class="h-bar-outer"><div class="h-bar-inner" style="height:'+h+'px;background:'+col+'"></div></div><div class="h-bar-day">'+day+'</div></div>'}).join('')+'</div></div>':''}`;
-  setTimeout(()=>{document.querySelectorAll('.m-bar-fill').forEach(el=>{el.style.width=el.dataset.w})},100);
+function checkURL(){
+  var p=new URLSearchParams(window.location.search);
+  var hrv=parseFloat(p.get('hrv')),rhr=parseFloat(p.get('rhr'));
+  var rawS=parseFloat(p.get('sleep')),rawD=parseFloat(p.get('deep'));
+  var bhrv=parseFloat(p.get('bhrv')),brhr=parseFloat(p.get('brhr'));
+  var bslp=parseFloat(p.get('bslp')),bdeep=parseFloat(p.get('bdeep'));
+  if(isNaN(hrv)&&isNaN(rhr)&&isNaN(rawS))return false;
+  processAndSave(isNaN(hrv)?null:hrv,isNaN(rhr)?null:rhr,isNaN(rawS)?null:rawS,isNaN(rawD)?null:rawD,isNaN(bhrv)?null:bhrv,isNaN(brhr)?null:brhr,isNaN(bslp)?null:bslp,isNaN(bdeep)?null:bdeep);
+  nav('dash');return true;
 }
 
-function mCard(icon,label,value,unit,score,baseline){
-  const v=value!=null?(typeof value==='number'?(Number.isInteger(value)?value:value.toFixed(1)):value):'—';
-  const b=baseline!=null?(typeof baseline==='number'?(Number.isInteger(baseline)?baseline:baseline.toFixed(1)):baseline):'—';
-  return'<div class="m-card"><div class="m-card-head"><div class="m-label"><span class="icon">'+icon+'</span><span class="name">'+label+'</span></div><span class="m-badge">'+(score!=null?score+'/100':'—')+'</span></div><div class="m-values"><div><span class="m-val">'+v+'</span><span class="m-unit">'+unit+'</span></div><span class="m-base">14d avg: '+b+' '+unit+'</span></div><div class="m-bar"><div class="m-bar-fill" data-w="'+(score||0)+'%" style="background:'+barCol(score)+'"></div></div></div>';
+function renderDash(){
+  var h=hist(),td=new Date().toISOString().split('T')[0];
+  document.getElementById('ddate').textContent=td;
+  if(!h.length){document.getElementById('dcont').innerHTML='<div style="text-align:center;padding:80px 0"><p style="font-size:40px;margin-bottom:16px">⌚</p><p style="font-family:var(--fm);font-size:13px;color:var(--t2)">No data yet</p><p style="font-size:12px;color:var(--t3);margin-top:8px">Log your first entry in the Input tab</p></div>';return}
+  var l=h[h.length-1],c=zHex(l.zone),R=83,C=2*Math.PI*R,off=C*(1-(l.composite||0)/100);
+  document.getElementById('ddot').style.color=c;
+  var l7=h.slice(-7);
+  document.getElementById('dcont').innerHTML=
+    '<div class="shero" style="background:radial-gradient(circle at 50% 40%,'+c+'11,transparent 70%)">'+
+    '<div class="rwr"><svg viewBox="0 0 190 190"><circle class="rtrk" cx="95" cy="95" r="'+R+'"/><circle class="rarc" cx="95" cy="95" r="'+R+'" stroke="'+c+'" stroke-dasharray="'+C+'" stroke-dashoffset="'+off+'" style="filter:drop-shadow(0 0 10px '+c+'66)"/></svg>'+
+    '<div class="rcen"><div class="rscr" style="color:'+zCol(l.zone)+'">'+(l.composite!=null?l.composite:'--')+'</div><div class="rzon" style="color:'+zCol(l.zone)+'">'+l.zone+'</div></div></div>'+
+    '<div class="rrec">'+zRec(l.zone)+'</div></div>'+
+    '<div class="mgrid">'+
+    mc('💓','HRV',l.todayHRV,'ms',l.hrvScore,l.baselineHRV)+
+    mc('❤️','RHR',l.todayRHR,'bpm',l.rhrScore,l.baselineRHR)+
+    mc('🌙','SLEEP',l.todaySleep,'hrs',l.sleepScore,l.baselineSleep)+
+    mc('😴','DEEP',l.todayDeep,'min',null,l.baselineDeep)+
+    '</div>'+
+    (l7.length>1?'<div class="hcard"><div class="hlbl">RECENT SCORES</div><div class="hbars">'+
+    l7.map(function(e){var ht=Math.max(5,((e.composite||0)/100)*60);var cl=zHex(e.zone);var d=new Date(e.date+'T00:00:00');var dy=d.toLocaleDateString('en',{weekday:'short'}).toUpperCase();return'<div class="hcol"><div class="hsc">'+(e.composite!=null?e.composite:'--')+'</div><div class="hout"><div class="hinn" style="height:'+ht+'px;background:'+cl+'"></div></div><div class="hdy">'+dy+'</div></div>'}).join('')+
+    '</div></div>':'');
+  setTimeout(function(){document.querySelectorAll('.mbfl').forEach(function(el){el.style.width=el.dataset.w})},100);
 }
 
-function renderBaselineInfo(){
-  const b=getBaselines(),el=document.getElementById('baseline-info');
-  if(b.days===0){el.innerHTML='<div class="baseline-info-label">AUTO BASELINES</div><p style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">No history yet. After 3+ days baselines activate automatically.</p>'}
-  else{el.innerHTML='<div class="baseline-info-label">AUTO BASELINES ('+b.days+' days)</div><p style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);line-height:1.8">HRV: <span style="color:var(--text-primary);font-weight:600">'+(b.bHRV?b.bHRV.toFixed(1):'—')+' ms</span> &nbsp; RHR: <span style="color:var(--text-primary);font-weight:600">'+(b.bRHR?b.bRHR.toFixed(1):'—')+' bpm</span> &nbsp; Sleep: <span style="color:var(--text-primary);font-weight:600">'+(b.bSleep?b.bSleep.toFixed(1):'—')+' hrs</span></p>'}
+function mc(icon,label,value,unit,score,baseline){
+  var v=value!=null?(typeof value==='number'?(Number.isInteger(value)?value:value.toFixed(1)):value):'--';
+  var b=baseline!=null?(typeof baseline==='number'?(Number.isInteger(baseline)?baseline:baseline.toFixed(1)):baseline):'--';
+  return'<div class="mcard"><div class="mhd"><div class="mlb"><span class="ic">'+icon+'</span><span class="nm">'+label+'</span></div><span class="mbdg">'+(score!=null?score+'/100':'--')+'</span></div><div class="mvls"><div><span class="mvl">'+v+'</span><span class="munt">'+unit+'</span></div><span class="mbsl">14d avg: '+b+' '+unit+'</span></div><div class="mbar"><div class="mbfl" data-w="'+(score||0)+'%" style="background:'+bCol(score)+'"></div></div></div>';
 }
 
 function renderLog(){
-  const history=getHistory(),list=document.getElementById('log-list'),cb=document.getElementById('clear-btn');
-  if(!history.length){list.innerHTML='<div class="log-empty">No entries logged yet</div>';cb.classList.add('hidden');return}
-  cb.classList.remove('hidden');
-  list.innerHTML=history.slice().reverse().slice(0,14).map(e=>'<div class="log-row"><div><span class="log-date">'+e.date+'</span> <span class="log-vals">HRV:'+(e.todayHRV??'—')+' RHR:'+(e.todayRHR??'—')+' S:'+(e.todaySleep??'—')+'h</span></div><div style="display:flex;align-items:center;gap:8px"><span class="log-score" style="color:'+zoneColor(e.zone)+'">'+(e.composite??'—')+'</span><span class="log-zone" style="color:'+zoneHex(e.zone)+';background:'+zoneDim(e.zone)+'">'+e.zone+'</span></div></div>').join('');
+  var h=hist(),list=document.getElementById('lglist'),cb=document.getElementById('clrbtn');
+  if(!h.length){list.innerHTML='<div class="lge">No entries logged yet</div>';cb.classList.add('hid');return}
+  cb.classList.remove('hid');
+  list.innerHTML=h.slice().reverse().slice(0,14).map(function(e){return'<div class="lgrow"><div><span class="lgdt">'+e.date+'</span> <span class="lgvl">H:'+fmt(e.todayHRV)+' R:'+fmt(e.todayRHR)+' S:'+fmt(e.todaySleep)+'h D:'+fmt(e.todayDeep)+'m</span></div><div style="display:flex;align-items:center;gap:8px"><span class="lgsc" style="color:'+zCol(e.zone)+'">'+(e.composite!=null?e.composite:'--')+'</span><span class="lgzn" style="color:'+zHex(e.zone)+';background:'+zDim(e.zone)+'">'+e.zone+'</span></div></div>'}).join('');
 }
 
-checkURLParams();
+checkURL();
 </script>
 </body>
 </html>
