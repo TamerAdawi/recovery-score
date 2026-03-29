@@ -1,8 +1,8 @@
-# ⚡ Recovery Score
+# Recovery Score
 
-**A data-driven recovery scoring system that uses HRV, Resting Heart Rate, and Sleep data against a personalized 14-day rolling baseline to determine daily training readiness.**
+**A data-driven recovery scoring system that compares your daily HRV, Resting Heart Rate, Total Sleep, and Deep Sleep against a personalized 14-day rolling baseline to determine training readiness.**
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-00FF88?style=for-the-badge&logo=github)](github.com/TamerAdawi/recovery-score)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-00FF88?style=for-the-badge&logo=github)](https://tameradawi.github.io/recovery-score)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
@@ -12,141 +12,210 @@
 
 ## The Problem
 
-Athletes and active people need to know **when to push and when to recover**. Commercial solutions (Whoop, Oura) cost $30+/month and use proprietary algorithms. I wanted a transparent, free, and customizable alternative that runs on data I already own from my Apple Watch.
+Athletes and active people need to know when to push and when to recover. Commercial solutions like Whoop and Oura cost $30+/month and use proprietary, black-box algorithms. I wanted a transparent, free, and fully customizable alternative built on data I already own from my Apple Watch.
 
 ## The Model
 
 ```
-Recovery Score = HRV vs baseline (40%) + RHR vs baseline (30%) + Sleep quality (30%)
+Recovery Score = HRV vs baseline x 40%  +  RHR vs baseline x 30%  +  Sleep quality x 30%
 ```
 
-Each component is scored **0–100** against a personal **14-day rolling average**:
+### Component Breakdown
 
-| Component | Weight | Logic |
-|-----------|--------|-------|
-| **HRV** (Heart Rate Variability) | 40% | Higher is better. `ratio = today / baseline`. Above baseline = recovery signal. |
-| **RHR** (Resting Heart Rate) | 30% | Lower is better. `ratio = baseline / today`. Below baseline = recovery signal. |
-| **Sleep** | 30% | 7–9h optimal (base 60), 6–7h moderate (base 40), <6h poor (base 20). Bonuses for baseline consistency and 7.5h+. |
+**HRV — Heart Rate Variability (40% weight)**
 
-### Zones
+Today's HRV compared to your rolling 14-day average. HRV reflects parasympathetic nervous system recovery. This gets the highest weight because the data shows high-HRV days produce approximately 10% more training volume than low-HRV days. Scoring is linear: 30ms above baseline scores near 100, at baseline scores ~65, 30ms below scores near 0.
 
-| Score | Zone | Meaning |
-|-------|------|---------|
-| **60+** | 🟢 GO | Fully recovered. Train at full intensity. |
-| **40–59** | 🟡 CAUTION | Moderate intensity recommended. |
-| **< 40** | 🔴 REST | Prioritize recovery. Light movement only. |
+**RHR — Resting Heart Rate (30% weight)**
+
+Today's RHR compared to your 14-day average. Lower than baseline means well-recovered; higher means your body is handling accumulated stress. An RHR 5+ bpm above baseline is a reliable warning sign. Uses an inverse linear scale: 10bpm below baseline scores near 100.
+
+**Sleep Quality (30% weight)**
+
+Combines total sleep hours and deep sleep minutes. The target baseline is 8 hours of total sleep. Deep sleep above 45 minutes receives a bonus; above 70 minutes scores near maximum. Within this component, total hours are weighted at 60% and deep sleep at 40%. Short sleep or low deep sleep pulls the score down significantly.
+
+### Training Zones
+
+| Score | Zone | Action |
+|-------|------|--------|
+| **60+** | 🟢 GO | Train as planned. Push for progression. |
+| **40-59** | 🟡 CAUTION | Train but back off intensity 5-10%. Skip PR attempts. |
+| **< 40** | 🔴 REST | Replace the session with a walk or full rest. |
 
 ### Why a 14-Day Rolling Baseline?
 
-Population averages are misleading — a "good" HRV for one person is completely different from another. By comparing against **your own** 14-day rolling average, the model:
-- Adapts to your unique physiology
-- Detects **relative changes** that actually matter
-- Eliminates the need for age/gender/fitness normalization tables
+Population averages are misleading — a "good" HRV for one person is completely different from another. By comparing against your own 14-day rolling average, the model adapts to your unique physiology. It detects relative changes that actually matter for recovery, eliminating the need for age, gender, or fitness-level normalization tables.
+
+## Architecture
+
+```
+┌──────────────┐     ┌─────────────────┐     ┌──────────────────┐
+│  Apple Watch  │────>│  Apple Health    │────>│  iOS Shortcuts   │
+│  (sensors)    │     │  (data store)   │     │  (data pipeline) │
+└──────────────┘     └─────────────────┘     └────────┬─────────┘
+                                                       │
+                                                       v
+                                              ┌──────────────────┐
+                                              │  Recovery Score  │
+                                              │  Web App         │
+                                              │  (scoring engine │
+                                              │   + dashboard)   │
+                                              └──────────────────┘
+```
+
+**Data flow:** Apple Watch sensors collect biometric data continuously. Apple Health stores it. An iOS Shortcut queries Health for today's values and 14-day baselines, then opens the web app with all parameters in the URL. The web app runs the scoring algorithm, renders the dashboard, and saves the entry to localStorage for history tracking.
 
 ## Features
 
-- **Recovery Dashboard** — Animated score ring with zone classification and component breakdown
-- **Manual Input** — Enter daily values with instant score computation
-- **Apple Shortcuts Integration** — Auto-fill via URL parameters from Apple Health queries
-- **History Tracking** — LocalStorage-based daily log with visual bar chart
-- **Model Explainer** — Built-in documentation explaining the science
-- **Mobile-First Design** — Designed for iPhone, works everywhere
-- **Zero Dependencies** — Pure HTML/CSS/JS, no frameworks, no build step
+- **Composite Recovery Score** — Weighted algorithm combining HRV, RHR, and sleep quality into a single 0-100 score
+- **Visual Dashboard** — Animated score ring with zone classification, component breakdown, and score bars
+- **4 Metric Cards** — HRV, RHR, Sleep Hours, and Deep Sleep with today's value, component score, and 14-day baseline comparison
+- **History Tracking** — localStorage-based daily log with 7-day visual bar chart, stores up to 90 days
+- **Apple Shortcuts Integration** — Fully automated data pipeline via URL parameters, no manual input needed
+- **Smart Sleep Detection** — Auto-converts sleep values whether received in seconds, minutes, or hours
+- **Baseline Fallback** — Uses URL-provided baselines when available, falls back to stored history baselines when not
+- **Manual Input** — Full input form for entering values directly with instant score computation
+- **Model Documentation** — Built-in explainer page covering the science behind each component
+- **Mobile-First Design** — Designed for iPhone viewport, dark theme, bottom navigation
+- **Zero Dependencies** — Pure HTML, CSS, and JavaScript. No frameworks, no build tools, no npm
 
 ## Live Demo
 
-**[→ Open the app](github.com/TamerAdawi/recovery-score)**
+**[→ Open the app](https://tameradawi.github.io/recovery-score)**
 
 Try it with sample data:
 ```
-https://TamerAdawi.github.io/recovery-score/?hrv=48&rhr=55&sleep=7.5&bhrv=42&brhr=58&bsleep=7.0
+https://tameradawi.github.io/recovery-score/?hrv=48&rhr=55&sleep=602&deep=77&bhrv=42&brhr=58
 ```
 
 ## Apple Shortcuts Integration
 
-The app accepts health data via URL parameters, enabling a fully automated pipeline:
+The app accepts data via URL parameters, enabling a fully automated morning routine:
 
 ```
-Apple Watch → Health → Shortcuts → This App
+Apple Watch  ->  Apple Health  ->  iOS Shortcuts  ->  Recovery Score Web App
 ```
 
 ### URL Parameters
 
-| Param | Description | Example |
-|-------|-------------|---------|
-| `hrv` | Today's HRV (ms) | 48 |
-| `rhr` | Today's Resting HR (bpm) | 55 |
-| `sleep` | Today's sleep (hours) | 7.5 |
-| `bhrv` | 14-day avg HRV | 42 |
-| `brhr` | 14-day avg RHR | 58 |
-| `bsleep` | 14-day avg sleep | 7.0 |
+| Parameter | Description | Example | Required |
+|-----------|-------------|---------|----------|
+| `hrv` | Today's average HRV (ms) | 48.5 | Yes |
+| `rhr` | Today's resting heart rate (bpm) | 55 | Yes |
+| `sleep` | Total sleep (auto-detects sec/min/hrs) | 602 | Yes |
+| `deep` | Deep sleep (minutes) | 77 | No |
+| `bhrv` | 14-day average HRV (ms) | 42.3 | No* |
+| `brhr` | 14-day average RHR (bpm) | 58.1 | No* |
+| `bslp` | 14-day average sleep (auto-detects) | 480 | No* |
+| `bdeep` | 14-day average deep sleep (minutes) | 48 | No* |
 
-### Shortcut Setup
+*Baselines fall back to stored history if not provided in URL.
 
-1. Create a Shortcut that queries Apple Health for HRV, RHR, and Sleep
-2. Compute 14-day baselines using "Calculate Statistics → Average"
-3. Open the URL with all 6 parameters
-4. Set as a daily automation at 7:00 AM
+### Shortcut Structure
 
-The app auto-computes the score, saves to history, and shows the dashboard.
+The iOS Shortcut performs these steps:
 
-## Setup & Deployment
+1. **Query HRV** — Find Health Samples, Heart Rate Variability, today, Calculate Statistics (Average)
+2. **Query RHR** — Find Health Samples, Resting Heart Rate, today
+3. **Query Baselines** — Same queries with 14-day window, Calculate Statistics (Average)
+4. **Query Sleep** — Runs a secondary shortcut that parses Apple Health sleep analysis into total sleep and deep sleep minutes using category-level filtering
+5. **Extract Values** — Regex pattern matching to pull numeric values from the sleep report
+6. **Build URL** — Constructs the full URL with all parameters as query strings
+7. **Open URL** — Opens Safari, the web app auto-computes the score and saves to history
 
-### Option 1: GitHub Pages (Recommended)
+### Daily Automation
 
-```bash
-# 1. Fork or clone this repo
-git clone github.com/TamerAdawi/recovery-score.git
+Set up as a daily automation in the Shortcuts app:
 
-# 2. That's it. Enable GitHub Pages:
-#    Settings → Pages → Source: main → / (root) → Save
+1. Go to **Automation** tab, tap **+**, select **Time of Day**, set to 7:00 AM, Daily
+2. **Run Shortcut**, select Recovery Score
+3. Turn off **Ask Before Running**
 
-# 3. Your app is live at:
-#    github.com/TamerAdawi/recovery-score
+Your recovery score is computed and displayed every morning without lifting a finger.
+
+## Scoring Algorithm Detail
+
+### HRV Score (0-100)
+```javascript
+// Linear scale: +30ms above baseline = 100, at baseline = 65, -30ms below = 0
+score = 65 + (diff / 30) * 35
+// where diff = todayHRV - baselineHRV
 ```
 
-### Option 2: Local
-
-```bash
-# Just open the file
-open index.html
+### RHR Score (0-100)
+```javascript
+// Inverse linear: 10bpm below baseline = 100, at baseline = 65, +10bpm above = 0
+score = 65 + (diff / 10) * 35
+// where diff = baselineRHR - todayRHR (positive when today is lower = good)
 ```
 
-No server needed. No `npm install`. No build step.
+### Sleep Score (0-100)
+```javascript
+// Hours component (60% of sleep score):
+//   9+ hrs = 90, 8+ = 75, 7+ = 60, 6+ = 40, 5+ = 25, <5 = 10
+//   Bonus/penalty vs baseline ratio
 
-## Project Structure
+// Deep sleep component (40% of sleep score):
+//   70+ min = 100, 55+ = 80, 45+ = 65, 30+ = 45, 20+ = 30, <20 = 15
+//   Bonus/penalty vs baseline ratio
 
+sleepScore = hoursScore * 0.6 + deepScore * 0.4
 ```
-recovery-score/
-├── index.html          ← Entire app (HTML + CSS + JS in one file)
-├── README.md           ← This file
-└── LICENSE             ← MIT License
-```
 
-Single-file architecture is intentional — it makes deployment trivial and keeps the project focused on the algorithm and UI, not tooling.
+### Composite
+```javascript
+composite = hrvScore * 0.4 + rhrScore * 0.3 + sleepScore * 0.3
+// Zones: 60+ = GO | 40-59 = CAUTION | <40 = REST
+```
 
 ## Technical Decisions
 
 | Decision | Reasoning |
 |----------|-----------|
-| **No framework** | The app is ~800 lines total. React/Vue would add complexity without benefit. |
-| **Single HTML file** | Simplifies deployment (GitHub Pages, any static host) and makes the code easy to audit. |
-| **LocalStorage** | No backend needed. Data stays on the user's device. Privacy by default. |
-| **CSS animations only** | No animation libraries. Hardware-accelerated transitions via `transform` and `opacity`. |
-| **URL parameter API** | Enables integration with Apple Shortcuts without any server or auth layer. |
+| **No framework** | The entire app is ~600 lines. React/Vue would add complexity without benefit for a single-page scoring tool. |
+| **Single HTML file** | Simplifies deployment to any static host. One file to audit, one file to deploy. |
+| **localStorage** | No backend needed. All data stays on the user's device. Privacy by default, zero server costs. |
+| **URL parameter API** | Enables integration with Apple Shortcuts without any server, authentication, or API layer. |
+| **CSS-only animations** | Hardware-accelerated transitions via transform and opacity. No animation library needed. |
+| **Auto-detection for sleep** | Sleep data arrives in different units depending on the source. Auto-converting eliminates user errors. |
+| **Baseline fallback** | URL baselines take priority, stored history baselines ensure the app works with partial data. |
 
-## Future Improvements
+## Project Structure
 
-- [ ] Service Worker for offline support (PWA)
-- [ ] Export history as CSV
-- [ ] Trend analysis with 7-day moving average visualization
-- [ ] Integration with Health Auto Export for fully automated data pipeline
-- [ ] watchOS complication via native Swift app
+```
+recovery-score/
+├── index.html    <- Entire application (HTML + CSS + JS)
+├── README.md     <- Documentation
+└── LICENSE       <- MIT License
+```
+
+## Setup
+
+```bash
+# Clone
+git clone https://github.com/tameradawi/recovery-score.git
+
+# Deploy via GitHub Pages:
+# Settings -> Pages -> Source: main -> / (root) -> Save
+
+# Live at:
+# https://tameradawi.github.io/recovery-score
+```
+
+No server. No npm install. No build step. One HTML file.
+
+## Future Roadmap
+
+- [ ] Progressive Web App with offline support via Service Worker
+- [ ] CSV export for training log integration
+- [ ] Trend analysis with 7-day and 30-day moving averages
+- [ ] Training load integration (RPE x duration) for load:recovery ratio
+- [ ] Correlation analysis — which metrics best predict individual performance
 
 ## References
 
 - Plews, D.J. et al. (2013). "Training Adaptation and Heart Rate Variability in Elite Endurance Athletes"
-- Buchheit, M. (2014). "Monitoring training status with HR measures"
+- Buchheit, M. (2014). "Monitoring Training Status with HR Measures: Do All Roads Lead to Rome?"
 - Bellenger, C.R. et al. (2016). "Monitoring Athletic Training Status Through Autonomic Heart Rate Regulation"
 
 ## License
@@ -155,4 +224,4 @@ MIT — use it, modify it, learn from it.
 
 ---
 
-**Built by Tamer Adawi** · [LinkedIn](https://www.linkedin.com/in/tamer-adawi-36a6a91a6/) · [GitHub](https://github.com/TamerAdawi)
+**Built by Tamer Adawi** · [LinkedIn](https://linkedin.com/in/tameradawi) · [GitHub](https://github.com/tameradawi)
